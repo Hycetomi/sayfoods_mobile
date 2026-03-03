@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// We will create this file next
 import 'src/features/auth/auth_gate.dart';
 
 Future<void> main() async {
-  // Ensure Flutter bindings are ready before initializing Supabase
+  // Ensure Flutter bindings are ready before initializing
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase
-  // TODO: Replace with your actual Supabase URL and Anon Key
+  // Load environment variables from .env.local
+  await dotenv.load(fileName: '.env.local');
+
+  // Initialize Supabase using values from .env.local
   await Supabase.initialize(
-    url: 'https://iyieqjqhrcaaapncdpkd.supbase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml5aWVxanFocmNhYWFwbmNkcGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwOTIzNTgsImV4cCI6MjA4NDY2ODM1OH0.7fGZaXwVIAAxdfGOmgCOgZzDfkLHxj14GzTNiNbzkFo',
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANNON_KEY']!,
   );
 
   // Wrap the app in ProviderScope for Riverpod
