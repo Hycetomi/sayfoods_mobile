@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_provider.dart';
+import 'presentation/welcome_screen.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -14,11 +15,9 @@ class AuthGate extends ConsumerWidget {
       data: (authState) {
         final session = authState.session;
 
-        // 1. If not logged in, show Login Screen
+        // 1. If not logged in, show Login Screen (Welcome Screen)
         if (session == null) {
-          return const Scaffold(
-            body: Center(child: Text('Login Screen (Coming Soon)')),
-          );
+          return const WelcomeScreen();
         }
 
         // 2. If logged in, fetch the role to determine the route
