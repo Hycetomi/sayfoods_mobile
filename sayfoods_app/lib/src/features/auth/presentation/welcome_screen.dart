@@ -29,70 +29,54 @@ class WelcomeScreen extends StatelessWidget {
                 children: [
                   const Spacer(),
                   // 2. Logo / Typography
-                  // Note: The design had a logo, but we will use styled text for now.
-                  RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'Say',
-                          style: TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.purple,
-                            letterSpacing: -1.5,
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 150,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback in case the user hasn't placed the logo in the folder yet
+                      return const SizedBox(
+                        height: 120,
+                        child: Center(
+                          child: Text(
+                            '[ Place logo.png in assets/images/ ]',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white70),
                           ),
                         ),
-                        TextSpan(
-                          text: 'foods',
-                          style: TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.red,
-                            letterSpacing: -1.5,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '.com',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
 
                   // 3. Main Headings
-                  const Text(
+                  Text(
                     'WELCOME TO',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const Text(
-                    'Sayfoods',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 64,
                       fontWeight: FontWeight.w900,
-                      height: 1.0,
-                      letterSpacing: -2.0,
+                      letterSpacing: 2.0,
+                      fontSize: 28,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  Text(
+                    'Sayfoods',
+                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.0,
+                      fontSize: 72,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
                     'Your one stop shop for fresh,\nquality and affordable foods',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Colors.white,
-                      fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      height: 1.4,
+                      fontSize: 16,
+                      height: 1.3,
                     ),
                   ),
 
@@ -107,7 +91,7 @@ class WelcomeScreen extends StatelessWidget {
                         // TODO: Navigate to Sign Up
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple.shade900, // Deep purple
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28),
@@ -133,7 +117,7 @@ class WelcomeScreen extends StatelessWidget {
                         // TODO: Navigate to Login
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple.shade900,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(28),
