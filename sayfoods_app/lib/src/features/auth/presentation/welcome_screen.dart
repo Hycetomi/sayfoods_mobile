@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:sayfoods_app/src/features/auth/presentation/login_screen.dart';
+import 'package:sayfoods_app/src/features/auth/presentation/register_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -88,7 +90,11 @@ class WelcomeScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigate to Sign Up
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -114,7 +120,11 @@ class WelcomeScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigate to Login
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterScreen(),
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
