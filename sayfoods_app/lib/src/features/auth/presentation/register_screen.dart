@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:sayfoods_app/src/shared/widgets/sayfoods_text_field.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Your custom widgets and services
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_text_field.dart';
+import 'package:sayfoods_app/src/features/auth/application/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -28,18 +31,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // --- EMAIL SIGN UP ---
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Supabase Sign Up Call
       await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        // Note: We don't need to pass 'confirm password' to Supabase,
-        // we just validate it locally in the form.
       );
 
       if (mounted) {
@@ -48,7 +49,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: Text('Registration successful! Please check your email.'),
           ),
         );
-        // Navigate to login or home depending on your flow
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -70,10 +70,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  // --- GOOGLE SIGN IN ---
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService().signInWithGoogle();
+      // If successful, Riverpod's AuthGate will automatically detect the new session
+      // and navigate the user away from this screen!
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Supabase Error: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // This allows the body to flow behind the AppBar area
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -89,15 +119,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(
-                  'assets/images/grocery_bg.jpg',
-                ), // Update with your image name
+                image: AssetImage('assets/images/welcome_bg.png'),
                 fit: BoxFit.cover,
               ),
             ),
           ),
 
-          // 2. Dark Overlay (to make text readable)
+          // 2. Dark Overlay
           Container(color: Colors.black.withOpacity(0.4)),
 
           // 3. Main Content
@@ -219,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Google Button
+                    // Google Button (Now wired up!)
                     SizedBox(
                       width: double.infinity,
                       height: 55,
@@ -231,13 +259,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        onPressed: () {
-                          // TODO: Implement Google Sign In
-                        },
-                        icon: const Icon(
-                          Icons.g_mobiledata,
-                          size: 32,
-                        ), // Placeholder for Google Logo asset
+                        onPressed: _isLoading ? null : _handleGoogleSignIn,
+                        icon: const Icon(Icons.g_mobiledata, size: 32),
                         label: const Text(
                           'Continue with Google',
                           style: TextStyle(

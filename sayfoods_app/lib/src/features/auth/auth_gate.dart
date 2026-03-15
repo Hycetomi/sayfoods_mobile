@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_provider.dart';
 import 'presentation/welcome_screen.dart';
 
+// Import your new Home Screen
+import 'package:sayfoods_app/src/features/home/presentation/home_screen.dart';
+
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 
@@ -32,9 +35,9 @@ class AuthGate extends ConsumerWidget {
             } else if (role == 'rider') {
               return const Scaffold(body: Center(child: Text('Rider Hub')));
             } else {
-              return const Scaffold(
-                body: Center(child: Text('Client Catalog')),
-              );
+              // 3. The Client Route!
+              // This is the default fallback for standard users.
+              return const ClientHomeScreen();
             }
           },
           loading: () =>

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:sayfoods_app/src/features/auth/presentation/register_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Proper package import for our shared widget
+// Screens & Widgets
+import 'package:sayfoods_app/src/features/auth/presentation/register_screen.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_text_field.dart';
+
+// Services
+import 'package:sayfoods_app/src/features/auth/application/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,20 +30,23 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // --- EMAIL SIGN IN ---
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Supabase Login Call
       await Supabase.instance.client.auth.signInWithPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      // If successful, Riverpod's AuthGate will automatically detect the session
-      // change and navigate the user to their respective Dashboard/Catalog.
+      // This strips away the Login and Welcome screens so the AuthGate
+      // is the only thing left, revealing the Home Screen!
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } on AuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -52,6 +58,40 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('An unexpected error occurred'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- GOOGLE SIGN IN ---
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService().signInWithGoogle();
+
+      // Clear the navigation stack to reveal the Home Screen
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Supabase Error: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -79,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/images/grocery_bg.jpg'),
+                image: AssetImage('assets/images/welcome_bg.png'),
                 fit: BoxFit.cover,
               ),
             ),
@@ -212,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Google Button
+                    // Google Button (Now fully wired up!)
                     SizedBox(
                       width: double.infinity,
                       height: 55,
@@ -224,9 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        onPressed: () {
-                          // TODO: Implement Google Sign In
-                        },
+                        onPressed: _isLoading ? null : _handleGoogleSignIn,
                         icon: Icon(
                           Icons.g_mobiledata,
                           size: 32,
