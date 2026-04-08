@@ -1,82 +1,99 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sayfoods_app/src/features/products/presentation/product_details_screen.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
+import 'package:sayfoods_app/src/features/profile/presentation/profile_screen.dart';
+// If you are keeping the cart navigation here, you will also need the CartScreen import!
+//import 'package:sayfoods_app/src/features/cart/presentation/cart_screen.dart';
+
+// Widgets
 import 'package:sayfoods_app/src/shared/widgets/product_card.dart';
 import 'package:sayfoods_app/src/shared/widgets/category_chip.dart';
+import 'package:sayfoods_app/src/shared/widgets/cart_icon_badge.dart';
 
-class ClientHomeScreen extends StatefulWidget {
+// Providers
+import 'package:sayfoods_app/src/features/products/application/product_provider.dart';
+
+import 'package:sayfoods_app/src/features/orders/presentation/orders_screen.dart';
+
+class ClientHomeScreen extends ConsumerStatefulWidget {
   const ClientHomeScreen({super.key});
 
   @override
-  State<ClientHomeScreen> createState() => _ClientHomeScreenState();
+  ConsumerState<ClientHomeScreen> createState() => _ClientHomeScreenState();
 }
 
-class _ClientHomeScreenState extends State<ClientHomeScreen> {
+class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      _buildHomeView(),
+      const OrdersScreen(),
+      const Center(child: Text('Messages Coming Soon', style: TextStyle(fontSize: 18, color: Colors.grey))),
+    ];
+
     return Scaffold(
-      backgroundColor:
-          Colors.grey[50], // Very light grey background to make cards pop
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80.0),
-        child: AppBar(
-          automaticallyImplyLeading: false, // Hides the back button
-          elevation: 0,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                // You can reuse your grocery_bg.jpg here or add a specific header image
-                image: AssetImage('assets/images/grocery_bg.png'),
-                fit: BoxFit.cover,
-              ),
+      backgroundColor: Colors.grey[50],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: pages,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
             ),
-            child: Container(
-              color: Colors.black.withOpacity(
-                0.3,
-              ), // Dark overlay for text readability
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Sayfoods',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.search, color: Colors.white),
-                            onPressed: () {},
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.shopping_bag_outlined,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {},
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.person_outline,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {},
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          ],
         ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) => setState(() => _selectedIndex = index),
+          selectedItemColor: Colors.orange,
+          unselectedItemColor: Colors.black54,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.local_fire_department),
+              label: 'Orders',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.message),
+              label: 'Messages',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeView() {
+    return Scaffold(
+      backgroundColor: Colors.grey[50], // Very light grey background to make cards pop
+      appBar: SayfoodsAppBar(
+        showBackButton: false, // Home screen doesn't need a back button
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () {},
+          ),
+
+          const CartIconBadge(),
+          IconButton(
+            icon: const Icon(Icons.person_outline, color: Colors.white),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -90,39 +107,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          CategoryChip(
-                            emoji: '🥚',
-                            label: 'Eggs',
-                            onTap: () {
-                              // TODO: Filter grid by Eggs
-                            },
-                          ),
-                          const SizedBox(width: 12),
-                          CategoryChip(
-                            emoji: '🍘',
-                            label: 'Snacks',
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 12),
-                          CategoryChip(
-                            emoji: '🍗',
-                            label: 'Meat',
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 12),
-                          CategoryChip(
-                            emoji: '🌶️',
-                            label: 'Spices',
-                            onTap: () {},
-                          ),
-                        ],
-                      ),
+                    CategoryChip(
+                      emoji: '🥚',
+                      label: 'Eggs',
+                      onTap: () {
+                        // TODO: Filter grid by Eggs
+                      },
                     ),
+                    const SizedBox(width: 12),
+                    CategoryChip(emoji: '🍘', label: 'Snacks', onTap: () {}),
+                    const SizedBox(width: 12),
+                    CategoryChip(emoji: '🍗', label: 'Meat', onTap: () {}),
+                    const SizedBox(width: 12),
+                    CategoryChip(emoji: '🌶️', label: 'Spices', onTap: () {}),
                   ],
                 ),
               ),
@@ -135,7 +132,6 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   image: const DecorationImage(
-                    // Replace with your actual banner asset
                     image: AssetImage('assets/images/banner.png'),
                     fit: BoxFit.cover,
                   ),
@@ -175,65 +171,82 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 3. Product Grid
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: 4,
-                itemBuilder: (context, index) {
-                  // Using our new extracted widget!
-                  return ProductCard(
-                    title: 'MEAT',
-                    description: '3kg of processed cow meat',
-                    price: '₦3,000',
-                    rating: 4.5,
-                    imagePath: 'assets/images/meat.png', // Placeholder image
-                    onTap: () {
-                      // We will navigate to the Product Details screen here later
+              // 3. Product Grid (Powered by Riverpod!)
+              ref
+                  .watch(productListProvider)
+                  .when(
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(color: Colors.orange),
+                      ),
+                    ),
+                    error: (error, stack) => Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Text(
+                          'Oops! Could not load products: $error',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ),
+                    data: (products) {
+                      // Empty State
+                      if (products.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32.0),
+                            child: Text(
+                              'No products available yet.\nCheck back soon!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Data State
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.75,
+                            ),
+                        itemCount: products.length,
+                        itemBuilder: (context, index) {
+                          final product = products[index];
+
+                          return ProductCard(
+                            title: product.name,
+                            description: product.description,
+                            price: '₦${product.price.toStringAsFixed(0)}',
+                            rating: product.rating,
+                            imagePath: product.imageUrl.isNotEmpty
+                                ? product.imageUrl
+                                : 'assets/images/meat.png',
+                            onTap: () {
+                              // Navigate to the Product Details Screen!
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      ProductDetailsScreen(product: product),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
                     },
-                  );
-                },
-              ),
+                  ),
             ],
           ),
-        ),
-      ),
-
-      // 4. Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          selectedItemColor: Colors.orange,
-          unselectedItemColor: Colors.black54,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_fire_department),
-              label: 'Orders',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.message),
-              label: 'Messages',
-            ),
-          ],
         ),
       ),
     );
