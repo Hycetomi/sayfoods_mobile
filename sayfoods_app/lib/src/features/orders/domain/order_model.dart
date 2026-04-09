@@ -35,6 +35,7 @@ class OrderItemModel {
 class OrderModel {
   final String id;
   final String clientId;
+  final String? clientName; // Joined from profiles
   final String status;
   final String deliveryAddress;
   final double subtotal;
@@ -47,6 +48,7 @@ class OrderModel {
   OrderModel({
     required this.id,
     required this.clientId,
+    this.clientName,
     required this.status,
     required this.deliveryAddress,
     required this.subtotal,
@@ -66,6 +68,7 @@ class OrderModel {
     return OrderModel(
       id: json['id'].toString(),
       clientId: json['client_id'].toString(),
+      clientName: json['profiles'] != null ? json['profiles']['full_name'] as String? : null,
       status: json['status']?.toString() ?? 'pending',
       deliveryAddress: json['delivery_address']?.toString() ?? '',
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0.0,

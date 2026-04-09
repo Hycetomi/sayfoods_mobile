@@ -5,6 +5,7 @@ class Product {
   final double price;
   final double rating;
   final String imageUrl;
+  final String? categoryName; // Maps the text from categories table
 
   Product({
     required this.id,
@@ -13,6 +14,7 @@ class Product {
     required this.price,
     required this.rating,
     required this.imageUrl,
+    this.categoryName,
   });
 
   // This factory converts the raw JSON map from Supabase into a Dart object
@@ -22,12 +24,12 @@ class Product {
       name: json['name'] as String? ?? 'Unknown Product',
       description:
           json['description'] as String? ?? 'No description available.',
-      // We use 'num' here because Supabase might return an int (3000) or double (3000.50)
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      imageUrl:
-          json['image_url'] as String? ??
-          '', // We'll handle empty images in the UI
+      imageUrl: json['image_url'] as String? ?? '', 
+      categoryName: json['categories'] != null 
+          ? json['categories']['name'] as String?
+          : null,
     );
   }
 }

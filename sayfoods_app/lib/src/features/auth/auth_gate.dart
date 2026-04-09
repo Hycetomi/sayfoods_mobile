@@ -5,6 +5,7 @@ import 'presentation/welcome_screen.dart';
 
 // Import your new Home Screen
 import 'package:sayfoods_app/src/features/home/presentation/home_screen.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/admin_main_screen.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -29,9 +30,7 @@ class AuthGate extends ConsumerWidget {
         return roleAsync.when(
           data: (role) {
             if (role == 'admin') {
-              return const Scaffold(
-                body: Center(child: Text('Admin Dashboard')),
-              );
+              return const AdminMainScreen();
             } else if (role == 'rider') {
               return const Scaffold(body: Center(child: Text('Rider Hub')));
             } else {

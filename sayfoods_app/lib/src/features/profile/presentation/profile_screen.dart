@@ -472,8 +472,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                   // Sign Out
                   InkWell(
-                    onTap: () {
-                      // TODO: Implement Supabase Sign Out
+                    onTap: () async {
+                      // Navigate back to the root before signing out to avoid orphaned navigator screens
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      await Supabase.instance.client.auth.signOut();
                     },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
