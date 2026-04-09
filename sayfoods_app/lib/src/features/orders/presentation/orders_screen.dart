@@ -4,6 +4,7 @@ import 'package:sayfoods_app/src/features/orders/application/order_provider.dart
 import 'package:sayfoods_app/src/features/orders/presentation/widgets/ongoing_timeline.dart';
 import 'package:sayfoods_app/src/features/orders/presentation/widgets/completed_order_card.dart';
 import 'package:sayfoods_app/src/features/orders/presentation/order_details_screen.dart';
+import 'package:sayfoods_app/src/features/products/presentation/search_screen.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -46,7 +47,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
           ),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.search, color: Colors.black87), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black87), 
+            onPressed: () {
+               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
+            }
+          ),
           IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black87), onPressed: () {}),
           IconButton(icon: const Icon(Icons.person_outline, color: Colors.black87), onPressed: () {}),
           const SizedBox(width: 8),

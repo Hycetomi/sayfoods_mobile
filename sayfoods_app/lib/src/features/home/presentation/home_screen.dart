@@ -15,6 +15,7 @@ import 'package:sayfoods_app/src/shared/widgets/cart_icon_badge.dart';
 import 'package:sayfoods_app/src/features/products/application/product_provider.dart';
 
 import 'package:sayfoods_app/src/features/orders/presentation/orders_screen.dart';
+import 'package:sayfoods_app/src/features/products/presentation/search_screen.dart';
 
 class ClientHomeScreen extends ConsumerStatefulWidget {
   const ClientHomeScreen({super.key});
@@ -74,6 +75,16 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
   }
 
   Widget _buildHomeView() {
+    final activeCat = ref.watch(selectedCategoryProvider);
+
+    void handleCategoryTap(String dbCategory) {
+      if (activeCat == dbCategory) {
+        ref.read(selectedCategoryProvider.notifier).state = null; // Toggle off
+      } else {
+        ref.read(selectedCategoryProvider.notifier).state = dbCategory;
+      }
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50], // Very light grey background to make cards pop
       appBar: SayfoodsAppBar(
@@ -81,9 +92,10 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
+            onPressed: () {
+               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
+            },
           ),
-
           const CartIconBadge(),
           IconButton(
             icon: const Icon(Icons.person_outline, color: Colors.white),
@@ -109,17 +121,31 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                   children: [
                     CategoryChip(
                       emoji: '🥚',
-                      label: 'Eggs',
-                      onTap: () {
-                        // TODO: Filter grid by Eggs
-                      },
+                      label: 'Dairy & Eggs',
+                      isSelected: activeCat == 'Dairy & Eggs',
+                      onTap: () => handleCategoryTap('Dairy & Eggs'),
                     ),
                     const SizedBox(width: 12),
-                    CategoryChip(emoji: '🍘', label: 'Snacks', onTap: () {}),
+                    CategoryChip(
+                      emoji: '🍘', 
+                      label: 'Pantry', 
+                      isSelected: activeCat == 'Pantry',
+                      onTap: () => handleCategoryTap('Pantry'),
+                    ),
                     const SizedBox(width: 12),
-                    CategoryChip(emoji: '🍗', label: 'Meat', onTap: () {}),
+                    CategoryChip(
+                      emoji: '🍗', 
+                      label: 'Meat & Poultry', 
+                      isSelected: activeCat == 'Meat & Poultry',
+                      onTap: () => handleCategoryTap('Meat & Poultry'),
+                    ),
                     const SizedBox(width: 12),
-                    CategoryChip(emoji: '🌶️', label: 'Spices', onTap: () {}),
+                    CategoryChip(
+                      emoji: '🌶️', 
+                      label: 'Fresh Produce', 
+                      isSelected: activeCat == 'Fresh Produce',
+                      onTap: () => handleCategoryTap('Fresh Produce'),
+                    ),
                   ],
                 ),
               ),

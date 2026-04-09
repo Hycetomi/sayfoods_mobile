@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 class CategoryChip extends StatelessWidget {
   final String emoji;
   final String label;
+  final bool isSelected;
   final VoidCallback? onTap;
 
   const CategoryChip({
     super.key,
     required this.emoji,
     required this.label,
+    this.isSelected = false,
     this.onTap,
   });
 
@@ -19,7 +21,7 @@ class CategoryChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected ? Colors.orange : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -37,9 +39,9 @@ class CategoryChip extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: isSelected ? Colors.white : Colors.black87,
               ),
             ),
           ],
