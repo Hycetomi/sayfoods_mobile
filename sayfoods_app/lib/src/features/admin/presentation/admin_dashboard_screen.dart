@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sayfoods_app/src/features/admin/application/admin_provider.dart';
+import 'package:sayfoods_app/src/features/admin/application/order_goal_provider.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/admin_order_detail_screen.dart';
 
-class AdminDashboardScreen extends ConsumerWidget {
+class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
     // Brand colors based on design
     const colorPurple = Color(0xFF5B1380);
     const colorOrange = Color(0xFFF28F2A);
@@ -53,13 +60,19 @@ class AdminDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 32),
 
               // 3. Top Stats Cards (Row)
-              ref.watch(adminStatsProvider).when(
-                loading: () => const Center(child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(color: colorOrange),
-                )),
-                error: (err, stack) => Center(child: Text('Error loading stats: $err', style: const TextStyle(color: Colors.red))),
-                data: (stats) => Column(
+              Builder(builder: (context) {
+                final currentGoal = ref.watch(currentMonthOrderGoalProvider);
+                final int goalAchieved = currentGoal?.achievedOrders ?? 0;
+                final double goalPercentage = currentGoal?.progressPercentage ?? 0.0;
+                final String targetStr = currentGoal?.targetOrders.toString() ?? "N/A";
+
+                return ref.watch(adminStatsProvider).when(
+                  loading: () => const Center(child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(color: colorOrange),
+                  )),
+                  error: (err, stack) => Center(child: Text('Error loading stats: $err', style: const TextStyle(color: Colors.red))),
+                  data: (stats) => Column(
                   children: [
                     Row(
                       children: [
@@ -69,16 +82,14 @@ class AdminDashboardScreen extends ConsumerWidget {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('${stats.stockBreakdown.values.fold<int>(0, (prev, str) => prev + int.parse(str.split(' ')[0]))}', style: const TextStyle(color: colorPurple, fontSize: 32, fontWeight: FontWeight.w900)),
+                                Text('${stats.totalStockCount}', style: const TextStyle(color: colorPurple, fontSize: 32, fontWeight: FontWeight.w900)),
                                 const Text('Stock count', style: TextStyle(color: colorOrange, fontSize: 13, fontWeight: FontWeight.w700)),
                                 const SizedBox(height: 16),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildMiniStat('Egg', stats.stockBreakdown['Egg']!),
-                                    _buildMiniStat('Meat', stats.stockBreakdown['Meat']!),
-                                    _buildMiniStat('Snacks', stats.stockBreakdown['Snacks']!),
-                                  ],
+                                  children: stats.stockBreakdown.entries
+                                      .map((e) => _buildMiniStat(e.key, e.value.toString()))
+                                      .toList(),
                                 )
                               ],
                             ),
@@ -92,8 +103,8 @@ class AdminDashboardScreen extends ConsumerWidget {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text('${stats.ordersCount}', style: const TextStyle(color: colorPurple, fontSize: 32, fontWeight: FontWeight.w900)),
-                                const Text('Orders', style: TextStyle(color: colorOrange, fontSize: 13, fontWeight: FontWeight.w700)),
+                                Text('$goalAchieved', style: const TextStyle(color: colorPurple, fontSize: 32, fontWeight: FontWeight.w900)),
+                                const Text('Mthly Orders', style: TextStyle(color: colorOrange, fontSize: 13, fontWeight: FontWeight.w700)),
                                 const SizedBox(height: 16),
                                 
                                 // Custom Progress Bar
@@ -106,13 +117,13 @@ class AdminDashboardScreen extends ConsumerWidget {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           const Text('Order Goal', style: TextStyle(color: colorOrange, fontSize: 8, fontWeight: FontWeight.bold)),
-                                          Text('${((stats.ordersCount / 800) * 100).toStringAsFixed(0)}%', style: TextStyle(color: colorOrange.withOpacity(0.5), fontSize: 8, fontWeight: FontWeight.bold)),
+                                          Text('${(goalPercentage * 100).toStringAsFixed(0)}%', style: TextStyle(color: colorOrange.withOpacity(0.5), fontSize: 8, fontWeight: FontWeight.bold)),
                                         ],
                                       ),
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          Text('${stats.ordersCount} ', style: const TextStyle(color: colorOrange, fontSize: 8, fontWeight: FontWeight.bold)),
+                                          Text('$goalAchieved ', style: const TextStyle(color: colorOrange, fontSize: 8, fontWeight: FontWeight.bold)),
                                           Expanded(
                                             child: Container(
                                               height: 8,
@@ -120,12 +131,12 @@ class AdminDashboardScreen extends ConsumerWidget {
                                                 borderRadius: BorderRadius.circular(4),
                                                 gradient: LinearGradient(
                                                   colors: const [colorPurple, Colors.black12],
-                                                  stops: [(stats.ordersCount / 800).clamp(0.0, 1.0), (stats.ordersCount / 800).clamp(0.0, 1.0)],
+                                                  stops: [goalPercentage, goalPercentage],
                                                 ),
                                               ),
                                             ),
                                           ),
-                                          const Text(' 800', style: TextStyle(color: colorOrange, fontSize: 8, fontWeight: FontWeight.bold)),
+                                          Text(' $targetStr', style: const TextStyle(color: colorOrange, fontSize: 8, fontWeight: FontWeight.bold)),
                                         ],
                                       )
                                     ],
@@ -167,7 +178,8 @@ class AdminDashboardScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-              ),
+              );
+              }),
               const SizedBox(height: 48),
 
               // 5. Orders Section Header
@@ -195,25 +207,39 @@ class AdminDashboardScreen extends ConsumerWidget {
                     );
                   }
 
-                  return ListView.separated(
+                   return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: orders.length,
                     separatorBuilder: (context, index) => const SizedBox(height: 16),
                     itemBuilder: (context, index) {
                       final order = orders[index];
-                      // Determine status color
                       Color sColor = Colors.grey;
                       String statusLabel = order.status.toLowerCase();
                       if (statusLabel == 'pending') sColor = Colors.orange;
-                      if (statusLabel == 'processing' || statusLabel == 'confirmed') sColor = Colors.yellow;
+                      if (statusLabel == 'processing' || statusLabel == 'confirmed') sColor = Colors.blue;
+                      if (statusLabel == 'out_for_delivery') sColor = Colors.teal;
                       if (statusLabel == 'delivered' || statusLabel == 'completed') sColor = Colors.green;
+                      if (statusLabel == 'cancelled') sColor = Colors.red;
 
-                      return _buildOrderTile(
-                        order.displayTitle.toUpperCase(),
-                        order.clientName ?? 'Unknown Customer',
-                        order.status[0].toUpperCase() + order.status.substring(1),
-                        sColor,
+                      return GestureDetector(
+                        onTap: () async {
+                          final refreshed = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AdminOrderDetailScreen(order: order),
+                            ),
+                          );
+                          if (refreshed == true) {
+                            ref.invalidate(adminRecentOrdersProvider);
+                          }
+                        },
+                        child: _buildOrderTile(
+                          order.displayTitle.toUpperCase(),
+                          order.clientName ?? 'Unknown Customer',
+                          order.status[0].toUpperCase() + order.status.substring(1),
+                          sColor,
+                        ),
                       );
                     },
                   );

@@ -64,13 +64,7 @@ final adminStatsProvider = FutureProvider.autoDispose<AdminDashboardStats>((ref)
     bottomThreeStock[shortName] = '$q units';
   }
 
-  // Ensure there are always 3 entries to prevent UI breaking
-  if (bottomThreeStock.length < 3) {
-     int fillersNeeded = 3 - bottomThreeStock.length;
-     for(int i = 0; i < fillersNeeded; i++) {
-        bottomThreeStock['Empty$i'] = '0 units';
-     }
-  }
+  // Removed hardcoded padding to allow dynamic length
 
   return AdminDashboardStats(
     usersCount: totalUsers,
@@ -87,7 +81,7 @@ final adminRecentOrdersProvider = FutureProvider.autoDispose<List<OrderModel>>((
   // Explicitly mapping the 'client_id' foreign key since 'orders' also has 'rider_id' pointing to profiles!
   final response = await supabase
       .from('orders')
-      .select('*, profiles!orders_client_id_fkey(full_name), order_items(*, products(*))')
+      .select('*, client:profiles!orders_client_id_fkey(full_name), rider:profiles!orders_rider_id_fkey(full_name), order_items(*, products(*, categories(id,name)))')
       .order('created_at', ascending: false)
       .limit(5);
 

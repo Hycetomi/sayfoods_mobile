@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/admin_dashboard_screen.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/admin_settings_screen.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({super.key});
@@ -16,7 +17,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     final List<Widget> pages = [
       const AdminDashboardScreen(),
       const Center(child: Text('Riders Allocation UI')),
-      const Center(child: Text('Settings UI')),
+      const AdminSettingsScreen(),
     ];
 
     return Scaffold(

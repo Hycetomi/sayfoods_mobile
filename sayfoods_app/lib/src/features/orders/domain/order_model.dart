@@ -35,7 +35,9 @@ class OrderItemModel {
 class OrderModel {
   final String id;
   final String clientId;
-  final String? clientName; // Joined from profiles
+  final String? clientName; // Joined from profiles via client FK
+  final String? riderId;
+  final String? riderName; // Joined from profiles via rider FK
   final String status;
   final String deliveryAddress;
   final double subtotal;
@@ -49,6 +51,8 @@ class OrderModel {
     required this.id,
     required this.clientId,
     this.clientName,
+    this.riderId,
+    this.riderName,
     required this.status,
     required this.deliveryAddress,
     required this.subtotal,
@@ -65,10 +69,27 @@ class OrderModel {
         .map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>))
         .toList();
 
+    // Client name from the client FK alias
+    String? clientName;
+    if (json['profiles'] != null) {
+      clientName = json['profiles']['full_name'] as String?;
+    } else if (json['client'] != null) {
+      clientName = json['client']['full_name'] as String?;
+    }
+
+    // Rider name from the rider FK alias
+    String? riderId = json['rider_id']?.toString();
+    String? riderName;
+    if (json['rider'] != null) {
+      riderName = json['rider']['full_name'] as String?;
+    }
+
     return OrderModel(
       id: json['id'].toString(),
       clientId: json['client_id'].toString(),
-      clientName: json['profiles'] != null ? json['profiles']['full_name'] as String? : null,
+      clientName: clientName,
+      riderId: riderId,
+      riderName: riderName,
       status: json['status']?.toString() ?? 'pending',
       deliveryAddress: json['delivery_address']?.toString() ?? '',
       subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0.0,
