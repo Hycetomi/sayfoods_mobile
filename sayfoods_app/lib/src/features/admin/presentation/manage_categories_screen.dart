@@ -1,0 +1,191 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
+import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
+
+class ManageCategoriesScreen extends ConsumerWidget {
+  const ManageCategoriesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categoriesAsyncValue = ref.watch(categoryListProvider);
+    final bgColor = const Color(0xFFFCFCFC);
+    final primaryPurple = const Color(0xFF5B1380);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        title: const Text('Manage Categories', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        backgroundColor: bgColor,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final newName = await TextInputDialog.show(
+            context: context,
+            title: 'New Category Name',
+            initialValue: '',
+          );
+          if (newName != null && newName.isNotEmpty) {
+            try {
+              await ref.read(categoryListProvider.notifier).addCategory(newName);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Category added successfully!'), backgroundColor: Colors.green),
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error adding category: $e'), backgroundColor: Colors.red),
+                );
+              }
+            }
+          }
+        },
+        backgroundColor: primaryPurple,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Add Category', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+      body: categoriesAsyncValue.when(
+        loading: () => Center(child: CircularProgressIndicator(color: primaryPurple)),
+        error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
+        data: (categories) {
+          if (categories.isEmpty) {
+            return const Center(child: Text('No categories found. Let\'s create one!', style: TextStyle(color: Colors.grey)));
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            itemCount: categories.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final category = categories[index];
+
+              return Dismissible(
+                key: Key(category.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  padding: const EdgeInsets.only(right: 20),
+                  alignment: Alignment.centerRight,
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.delete_forever, color: Colors.white, size: 30),
+                ),
+                confirmDismiss: (direction) async {
+                  final result = await showDialog<int>(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Delete Category?'),
+                        content: Text('You are about to delete "${category.name}".\n\nWould you like to delete JUST this category, or BOTH the category and all associated products?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(0),
+                            child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(1),
+                            child: const Text('ONLY CATEGORY', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(2),
+                            child: const Text('CATEGORY & PRODUCTS', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (result == null || result == 0) return false;
+
+                  try {
+                    bool deleteProducts = (result == 2);
+                    await ref.read(categoryListProvider.notifier).deleteCategory(category.id, deleteProducts: deleteProducts);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${category.name} deleted${deleteProducts ? " along with products" : ""}'),
+                          backgroundColor: Colors.black87
+                        ),
+                      );
+                    }
+                    return true;
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                    return false;
+                  }
+                },
+                onDismissed: (direction) {
+                  // Handled during confirmDismiss to properly await the async provider method
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04), // soft shadow
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primaryPurple.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.category, color: primaryPurple),
+                    ),
+                    title: Text(
+                      category.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                    ),
+                    subtitle: Text(category.iconPath ?? 'No icon assigned', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                      onPressed: () async {
+                        final newName = await TextInputDialog.show(
+                          context: context,
+                          title: 'Edit Category Name',
+                          initialValue: category.name,
+                        );
+                        if (newName != null && newName.isNotEmpty && newName != category.name) {
+                          try {
+                            await ref.read(categoryListProvider.notifier).updateCategory(category.id, newName);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Category updated'), backgroundColor: Colors.green),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error updating: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
