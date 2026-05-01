@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:sayfoods_app/src/features/admin/application/order_history_provider.dart';
 import 'package:sayfoods_app/src/features/orders/domain/order_model.dart';
 import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 class OrderHistoryScreen extends ConsumerStatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -44,34 +45,16 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
   void _showOrderDetails(BuildContext context, OrderModel order) {
     final currencyFmt = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
 
-    showModalBottomSheet(
+    SayfoodsModal.showBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.75,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          builder: (_, scrollCtrl) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: _bgColor,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: Column(
-                children: [
-                  // Handle
-                  Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-                  ),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollCtrl,
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
                       children: [
                         // Header
                         Row(
@@ -197,13 +180,7 @@ class _OrderHistoryScreenState extends ConsumerState<OrderHistoryScreen> {
                         ),
                       ],
                     ),
-                  )
-                ],
-              ),
-            );
-          },
-        );
-      },
+        ),
     );
   }
 

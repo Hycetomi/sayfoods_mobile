@@ -1,3 +1,5 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class Product {
   final String id;
   final String name;
@@ -23,6 +25,19 @@ class Product {
 
   // This factory converts the raw JSON map from Supabase into a Dart object
   factory Product.fromJson(Map<String, dynamic> json) {
+    String imagePath = json['image_path'] as String? ?? json['image_url'] as String? ?? '';
+    
+    // Convert relative path to full Supabase public URL if it's not already a URL
+    if (imagePath.isNotEmpty && !imagePath.startsWith('http')) {
+      try {
+        imagePath = Supabase.instance.client.storage
+            .from('product_images')
+            .getPublicUrl(imagePath);
+      } catch (e) {
+        // Fallback to empty string or original path on error
+      }
+    }
+
     return Product(
       id: json['id'].toString(),
       name: json['name'] as String? ?? 'Unknown Product',
@@ -30,7 +45,7 @@ class Product {
           json['description'] as String? ?? 'No description available.',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
-      imageUrl: json['image_path'] as String? ?? json['image_url'] as String? ?? '', 
+      imageUrl: imagePath, 
       categoryName: json['categories'] != null 
           ? json['categories']['name'] as String?
           : null,

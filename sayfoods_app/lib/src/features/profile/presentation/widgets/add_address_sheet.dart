@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // Providers
 import 'package:sayfoods_app/src/features/profile/application/address_provider.dart';
 import 'package:sayfoods_app/src/features/profile/application/delivery_zone_provider.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 class AddAddressSheet extends ConsumerStatefulWidget {
   const AddAddressSheet({super.key});
@@ -25,11 +26,11 @@ class _AddAddressSheetState extends ConsumerState<AddAddressSheet> {
 
   void _saveAddress() {
     if (_streetController.text.trim().isEmpty || _selectedZoneId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter an address and select a zone.'),
-          backgroundColor: Colors.red,
-        ),
+      SayfoodsModal.show(
+        context: context,
+        type: SayfoodsModalType.warning,
+        title: 'Missing Info',
+        subtitle: 'Please enter an address and select a zone.',
       );
       return;
     }

@@ -4,6 +4,7 @@ import 'package:sayfoods_app/src/features/products/domain/product_model.dart';
 import 'package:sayfoods_app/src/features/admin/application/admin_product_provider.dart';
 import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 import 'dart:io';
 
 class AddEditProductScreen extends ConsumerStatefulWidget {
@@ -69,8 +70,11 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking image: $e'), backgroundColor: Colors.red),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Error picking image: $e',
         );
       }
     }
@@ -121,15 +125,21 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.productToEdit == null ? "Product Added" : "Product Updated"), backgroundColor: Colors.green),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Success',
+          subtitle: widget.productToEdit == null ? "Product Added" : "Product Updated",
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.toString(),
         );
       }
     } finally {

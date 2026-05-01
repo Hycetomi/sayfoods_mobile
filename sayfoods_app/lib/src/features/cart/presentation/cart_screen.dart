@@ -16,6 +16,7 @@ import 'package:sayfoods_app/src/features/profile/presentation/profile_screen.da
 
 import 'package:sayfoods_app/src/features/cart/presentation/widgets/cart_item_card.dart';
 import 'package:sayfoods_app/src/features/cart/presentation/widgets/cart_summary_row.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 // 1. Upgraded to a Stateful Consumer Widget to hold the selected address state
 class CartScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   // Local state to remember which address they selected for this order
   String? _selectedAddressId;
+  bool _isProcessingPayment = false;
 
   // NEW: Initialize the official SDK
   final _paystack = Paystack();
@@ -67,27 +69,35 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     try {
       // 1. Insert Order
-      final orderData = await supabase.from('orders').insert({
-        'client_id': user.id,
-        'status': 'pending',
-        'delivery_address': deliveryAddressText,
-        'subtotal': subTotal,
-        'delivery_fee': deliveryFee,
-        'total_amount': grandTotal,
-        'payment_reference': reference,
-        'payment_status': 'pending',
-        'payment_method': 'Paystack',
-      }).select().single();
+      final orderData = await supabase
+          .from('orders')
+          .insert({
+            'client_id': user.id,
+            'status': 'pending',
+            'delivery_address': deliveryAddressText,
+            'subtotal': subTotal,
+            'delivery_fee': deliveryFee,
+            'total_amount': grandTotal,
+            'payment_reference': reference,
+            'payment_status': 'pending',
+            'payment_method': 'Paystack',
+          })
+          .select()
+          .single();
 
       final orderId = orderData['id'] as String;
 
       // 2. Insert Order Items
-      final orderItemsData = items.map((item) => {
-        'order_id': orderId,
-        'product_id': item.product.id,
-        'quantity': item.quantity,
-        'price_at_purchase': item.product.price,
-      }).toList();
+      final orderItemsData = items
+          .map(
+            (item) => {
+              'order_id': orderId,
+              'product_id': item.product.id,
+              'quantity': item.quantity,
+              'price_at_purchase': item.product.price,
+            },
+          )
+          .toList();
 
       await supabase.from('order_items').insert(orderItemsData);
 
@@ -119,9 +129,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           'email': email,
           'amount': amountInKobo,
           'reference': reference,
-          'metadata': {
-            'order_id': orderId,
-          }
+          'metadata': {'order_id': orderId},
         }),
       );
 
@@ -145,180 +153,185 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     List<CartItem> cartItems,
     String deliveryAddressText,
   ) async {
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
+    if (_isProcessingPayment) return;
+    setState(() => _isProcessingPayment = true);
 
-    if (user == null || user.email == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to checkout.')),
-      );
-      return;
-    }
-
-    final amountInKobo = (grandTotal * 100).toInt();
-    String reference = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
-
-    // 1. Pre-save the Pending Order!
-    String? orderId = await _saveOrderToSupabase(
-      reference,
-      grandTotal,
-      subTotal,
-      deliveryFee,
-      cartItems,
-      deliveryAddressText,
-    );
-
-    if (orderId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Could not create order. Try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    // 2. Fetch Access Code with Metadata attached
-    String? accessCode = await _createAccessCode(
-      reference,
-      amountInKobo,
-      user.email!,
-      orderId,
-    );
-
-    if (accessCode == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to initialize payment. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    // 3. Launch Paystack Checkout UI
     try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+
+      if (user == null || user.email == null) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.warning,
+          title: 'Login Required',
+          subtitle: 'Please log in to checkout.',
+        );
+        return;
+      }
+
+      final amountInKobo = (grandTotal * 100).toInt();
+      String reference = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
+
+      // 1. Pre-save the Pending Order!
+      String? orderId = await _saveOrderToSupabase(
+        reference,
+        grandTotal,
+        subTotal,
+        deliveryFee,
+        cartItems,
+        deliveryAddressText,
+      );
+
+      if (orderId == null) {
+        if (mounted) {
+          SayfoodsModal.show(
+            context: context,
+            type: SayfoodsModalType.error,
+            title: 'Order Failed',
+            subtitle: 'Could not create order. Try again.',
+          );
+        }
+        return;
+      }
+
+      // 2. Fetch Access Code with Metadata attached
+      String? accessCode = await _createAccessCode(
+        reference,
+        amountInKobo,
+        user.email!,
+        orderId,
+      );
+
+      if (accessCode == null) {
+        if (mounted) {
+          SayfoodsModal.show(
+            context: context,
+            type: SayfoodsModalType.error,
+            title: 'Payment Error',
+            subtitle: 'Failed to initialize payment. Please try again.',
+          );
+        }
+        return;
+      }
+
+      // 3. Launch Paystack Checkout UI
       final response = await _paystack.launch(accessCode);
 
       if (response.status == "success") {
         print('Payment local success! Reference: ${response.reference}');
-        
+
         // 4. Handle Success State
         if (mounted) {
           ref.read(cartProvider.notifier).clearCart();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(
-               content: Text('Payment Successful! Order submitted.'),
-               backgroundColor: Colors.green,
-             ),
+
+          SayfoodsModal.show(
+            context: context,
+            type: SayfoodsModalType.success,
+            title: 'Success!',
+            subtitle: 'Payment Successful! Order submitted.',
           );
-          
+
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(response.message),
-              backgroundColor: Colors.red,
-            ),
+          SayfoodsModal.show(
+            context: context,
+            type: SayfoodsModalType.error,
+            title: 'Payment Failed',
+            subtitle: response.message,
           );
         }
       }
     } catch (e) {
       print('Paystack Launch Error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An error occurred during checkout.'),
-            backgroundColor: Colors.red,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Checkout Error',
+          subtitle: 'An error occurred during checkout.',
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
       }
     }
   }
 
   // --- Bottom Sheet to Select Address ---
   void _showAddressSelector(List<AddressModel> addresses, var zones) {
-    showModalBottomSheet(
+    SayfoodsModal.showBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select Delivery Address',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (addresses.isEmpty)
               const Text(
-                'Select Delivery Address',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'No addresses saved.',
+                style: TextStyle(color: Colors.grey),
               ),
-              const SizedBox(height: 16),
-              if (addresses.isEmpty)
-                const Text(
-                  'No addresses saved.',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ...addresses.map((address) {
-                // Find the zone name for the list
-                String zoneName = 'Unknown Zone';
-                if (zones != null) {
-                  final matched = zones
-                      .where((z) => z.id == address.zoneId)
-                      .toList();
-                  if (matched.isNotEmpty) zoneName = matched.first.name;
-                }
+            ...addresses.map((address) {
+              // Find the zone name for the list
+              String zoneName = 'Unknown Zone';
+              if (zones != null) {
+                final matched = zones
+                    .where((z) => z.id == address.zoneId)
+                    .toList();
+                if (matched.isNotEmpty) zoneName = matched.first.name;
+              }
 
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.location_on, color: Colors.red),
-                  title: Text(
-                    '${address.label != null ? '${address.label}: ' : ''}${address.street}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('Zone: $zoneName'),
-                  trailing:
-                      _selectedAddressId == address.id ||
-                          (_selectedAddressId == null &&
-                              address.id == addresses.first.id)
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
-                  onTap: () {
-                    // Update the state and recalculate the cart!
-                    setState(() => _selectedAddressId = address.id);
-                    Navigator.pop(context);
-                  },
-                );
-              }),
-              const SizedBox(height: 16),
-              const Divider(),
-              // Quick link to go add a new address
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
-                icon: const Icon(Icons.add, color: Colors.black87),
-                label: const Text(
-                  'Add a new address',
-                  style: TextStyle(color: Colors.black87),
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.location_on, color: Colors.red),
+                title: Text(
+                  '${address.label != null ? '${address.label}: ' : ''}${address.street}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
+                subtitle: Text('Zone: $zoneName'),
+                trailing:
+                    _selectedAddressId == address.id ||
+                        (_selectedAddressId == null &&
+                            address.id == addresses.first.id)
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : null,
+                onTap: () {
+                  // Update the state and recalculate the cart!
+                  setState(() => _selectedAddressId = address.id);
+                  Navigator.pop(context);
+                },
+              );
+            }),
+            const SizedBox(height: 16),
+            const Divider(),
+            // Quick link to go add a new address
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+              },
+              icon: const Icon(Icons.add, color: Colors.black87),
+              label: const Text(
+                'Add a new address',
+                style: TextStyle(color: Colors.black87),
               ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -394,63 +407,112 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         borderRadius: BorderRadius.circular(15),
                       ),
                     ),
-                    onPressed: () {
-                      if (activeAddress == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Please add a delivery address first.',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                      
-                      // Format address
-                      String addressText = '${activeAddress.street}, ${activeAddress.city ?? "Lagos"}';
-                      if (activeAddress.label != null && activeAddress.label!.isNotEmpty) {
-                        addressText = '${activeAddress.label}: $addressText';
-                      }
+                    onPressed: _isProcessingPayment
+                        ? null
+                        : () {
+                            if (activeAddress == null) {
+                              SayfoodsModal.show(
+                                context: context,
+                                type: SayfoodsModalType.warning,
+                                title: 'Address Required',
+                                subtitle: 'Please add a delivery address first.',
+                              );
+                              return;
+                            }
 
-                      _processPayment(
-                        grandTotal,
-                        subTotal,
-                        deliveryFee,
-                        cartItems,
-                        addressText,
-                      );
-                    },
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Place order',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            // Format address
+                            String addressText =
+                                '${activeAddress.street}, ${activeAddress.city ?? "Lagos"}';
+                            if (activeAddress.label != null &&
+                                activeAddress.label!.isNotEmpty) {
+                              addressText = '${activeAddress.label}: $addressText';
+                            }
+
+                            _processPayment(
+                              grandTotal,
+                              subTotal,
+                              deliveryFee,
+                              cartItems,
+                              addressText,
+                            );
+                          },
+                    child: _isProcessingPayment
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Place order',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Total - ₦${grandTotal.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        Text(
-                          'Total - ₦${grandTotal.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ),
             ),
 
       body: cartItems.isEmpty
-          ? const Center(
-              child: Text(
-                'Your cart is empty!',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 80,
+                    color: Colors.grey.shade300,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Your Cart is Empty',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Looks like you haven\'t added anything yet.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primaryPurple,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Start Shopping',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             )
           : SingleChildScrollView(
@@ -506,22 +568,31 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             ),
                             const SizedBox(height: 8),
                             // Show dynamic address or a prompt to add one
-                            activeAddress != null
-                                ? Text(
-                                    '${activeAddress.label != null ? '${activeAddress.label}\n' : ''}${activeAddress.street},\n${activeAddress.city ?? 'Lagos'}',
-                                    style: const TextStyle(
-                                      color: Colors.black87,
-                                      height: 1.4,
-                                    ),
-                                  )
-                                : const Text(
-                                    'No address selected.\nPlease add an address.',
+                            addressesAsyncValue.isLoading
+                                ? const Text(
+                                    'Loading address...',
                                     style: TextStyle(
                                       color: Colors.grey,
                                       height: 1.4,
                                       fontStyle: FontStyle.italic,
                                     ),
-                                  ),
+                                  )
+                                : activeAddress != null
+                                    ? Text(
+                                        '${activeAddress.label != null ? '${activeAddress.label}\n' : ''}${activeAddress.street},\n${activeAddress.city ?? 'Lagos'}',
+                                        style: const TextStyle(
+                                          color: Colors.black87,
+                                          height: 1.4,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'No address selected.\nPlease add an address.',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          height: 1.4,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
                           ],
                         ),
                       ),
@@ -574,5 +645,4 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
     );
   }
-
 }

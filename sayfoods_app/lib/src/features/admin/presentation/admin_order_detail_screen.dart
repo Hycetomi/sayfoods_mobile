@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:sayfoods_app/src/features/orders/domain/order_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 // ── Provider: fetch full riders list (profiles with role = 'rider') ──────────
 final ridersListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
@@ -119,17 +120,21 @@ class _AdminOrderDetailScreenState
     try {
       await notifier.updateStatus(widget.order.id, _currentStatus);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Order status updated!'),
-              backgroundColor: Colors.green),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Success',
+          subtitle: 'Order status updated!',
         );
         Navigator.pop(context, true); // signal refresh
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.toString(),
         );
       }
     }
@@ -141,16 +146,20 @@ class _AdminOrderDetailScreenState
     try {
       await notifier.assignRider(widget.order.id, _selectedRiderId!);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('$_selectedRiderName assigned!'),
-              backgroundColor: Colors.green),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Success',
+          subtitle: '$_selectedRiderName assigned!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.toString(),
         );
       }
     }
@@ -192,10 +201,11 @@ class _AdminOrderDetailScreenState
                     color: _orange, size: 20),
               ),
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Messaging feature coming soon!'),
-                  ),
+                SayfoodsModal.show(
+                  context: context,
+                  type: SayfoodsModalType.info,
+                  title: 'Coming Soon',
+                  subtitle: 'Messaging feature coming soon!',
                 );
               },
             ),

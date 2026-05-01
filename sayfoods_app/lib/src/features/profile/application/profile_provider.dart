@@ -5,11 +5,13 @@ class UserProfile {
   final String fullName;
   final String email;
   final String phoneNumber;
+  final String? avatarUrl;
 
   UserProfile({
     required this.fullName,
     required this.email,
     required this.phoneNumber,
+    this.avatarUrl,
   });
 }
 
@@ -22,7 +24,7 @@ final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
   // Fetch the extra details from your profiles table
   final data = await supabase
       .from('profiles')
-      .select('full_name, phone_number')
+      .select('full_name, phone_number, avatar_url')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -30,5 +32,6 @@ final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
     fullName: data?['full_name'] as String? ?? 'Sayfoods User',
     email: user.email ?? 'No email provided',
     phoneNumber: data?['phone_number'] as String? ?? 'No phone number',
+    avatarUrl: data?['avatar_url'] as String?,
   );
 });

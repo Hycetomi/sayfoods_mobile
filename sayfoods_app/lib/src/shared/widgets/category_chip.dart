@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class CategoryChip extends StatelessWidget {
   final String emoji;
+  final String? imageUrl;
   final String label;
   final bool isSelected;
   final VoidCallback? onTap;
@@ -9,6 +10,7 @@ class CategoryChip extends StatelessWidget {
   const CategoryChip({
     super.key,
     required this.emoji,
+    this.imageUrl,
     required this.label,
     this.isSelected = false,
     this.onTap,
@@ -35,7 +37,16 @@ class CategoryChip extends StatelessWidget {
           mainAxisSize:
               MainAxisSize.min, // Keeps the chip hugging the text closely
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 16)),
+            if (imageUrl != null && imageUrl!.isNotEmpty)
+              Image.network(
+                imageUrl!,
+                width: 20,
+                height: 20,
+                errorBuilder: (_, __, ___) =>
+                    Text(emoji, style: const TextStyle(fontSize: 16)),
+              )
+            else
+              Text(emoji, style: const TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
             Text(
               label,

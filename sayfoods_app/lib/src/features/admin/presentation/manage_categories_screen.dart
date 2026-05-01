@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
 import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 class ManageCategoriesScreen extends ConsumerWidget {
   const ManageCategoriesScreen({super.key});
@@ -31,14 +32,20 @@ class ManageCategoriesScreen extends ConsumerWidget {
             try {
               await ref.read(categoryListProvider.notifier).addCategory(newName);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Category added successfully!'), backgroundColor: Colors.green),
+                SayfoodsModal.show(
+                  context: context,
+                  type: SayfoodsModalType.success,
+                  title: 'Category Added',
+                  subtitle: 'Category added successfully!',
                 );
               }
             } catch (e) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error adding category: $e'), backgroundColor: Colors.red),
+                SayfoodsModal.show(
+                  context: context,
+                  type: SayfoodsModalType.error,
+                  title: 'Error',
+                  subtitle: 'Error adding category: $e',
                 );
               }
             }
@@ -76,28 +83,52 @@ class ManageCategoriesScreen extends ConsumerWidget {
                   child: const Icon(Icons.delete_forever, color: Colors.white, size: 30),
                 ),
                 confirmDismiss: (direction) async {
-                  final result = await showDialog<int>(
+                  final result = await SayfoodsModal.showBottomSheet<int>(
                     context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Delete Category?'),
-                        content: Text('You are about to delete "${category.name}".\n\nWould you like to delete JUST this category, or BOTH the category and all associated products?'),
-                        actions: [
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Delete Category?',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'You are about to delete "${category.name}".\nWould you like to delete JUST this category, or BOTH the category and all associated products?',
+                            style: const TextStyle(color: Colors.black54),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(1),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: const Text('ONLY CATEGORY'),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(context).pop(2),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                            child: const Text('CATEGORY & PRODUCTS'),
+                          ),
+                          const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(0),
                             child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(1),
-                            child: const Text('ONLY CATEGORY', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(2),
-                            child: const Text('CATEGORY & PRODUCTS', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                          ),
                         ],
-                      );
-                    },
+                      ),
+                    ),
                   );
 
                   if (result == null || result == 0) return false;
@@ -106,18 +137,21 @@ class ManageCategoriesScreen extends ConsumerWidget {
                     bool deleteProducts = (result == 2);
                     await ref.read(categoryListProvider.notifier).deleteCategory(category.id, deleteProducts: deleteProducts);
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${category.name} deleted${deleteProducts ? " along with products" : ""}'),
-                          backgroundColor: Colors.black87
-                        ),
+                      SayfoodsModal.show(
+                        context: context,
+                        type: SayfoodsModalType.success,
+                        title: 'Deleted',
+                        subtitle: '${category.name} deleted${deleteProducts ? " along with products" : ""}',
                       );
                     }
                     return true;
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                      SayfoodsModal.show(
+                        context: context,
+                        type: SayfoodsModalType.error,
+                        title: 'Error',
+                        subtitle: e.toString(),
                       );
                     }
                     return false;
@@ -165,14 +199,20 @@ class ManageCategoriesScreen extends ConsumerWidget {
                           try {
                             await ref.read(categoryListProvider.notifier).updateCategory(category.id, newName);
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Category updated'), backgroundColor: Colors.green),
+                              SayfoodsModal.show(
+                                context: context,
+                                type: SayfoodsModalType.success,
+                                title: 'Updated',
+                                subtitle: 'Category updated successfully',
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error updating: $e'), backgroundColor: Colors.red),
+                              SayfoodsModal.show(
+                                context: context,
+                                type: SayfoodsModalType.error,
+                                title: 'Error',
+                                subtitle: 'Error updating: $e',
                               );
                             }
                           }

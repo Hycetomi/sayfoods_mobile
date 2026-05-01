@@ -18,6 +18,8 @@ class SayfoodsAppBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading:
           false, // We build our own back button for better alignment
       elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
       flexibleSpace: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(

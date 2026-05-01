@@ -10,6 +10,7 @@ import 'package:sayfoods_app/src/features/profile/presentation/profile_screen.da
 import 'package:sayfoods_app/src/shared/widgets/product_card.dart';
 import 'package:sayfoods_app/src/shared/widgets/category_chip.dart';
 import 'package:sayfoods_app/src/shared/widgets/cart_icon_badge.dart';
+import 'package:sayfoods_app/src/features/home/presentation/widgets/ads_carousel.dart';
 
 // Providers
 import 'package:sayfoods_app/src/features/products/application/product_provider.dart';
@@ -116,85 +117,50 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
               // 1. Categories
               SizedBox(
                 height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    CategoryChip(
-                      emoji: '🥚',
-                      label: 'Dairy & Eggs',
-                      isSelected: activeCat == 'Dairy & Eggs',
-                      onTap: () => handleCategoryTap('Dairy & Eggs'),
+                child: ref.watch(categoryListProvider).when(
+                      loading: () => const Center(
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(color: Colors.orange, strokeWidth: 2),
+                        ),
+                      ),
+                      error: (err, stack) => const Center(
+                        child: Text('Failed to load categories', style: TextStyle(color: Colors.red)),
+                      ),
+                      data: (categories) {
+                        if (categories.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: categories.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final cat = categories[index];
+                            // Provide a default emoji based on the name if possible, or a generic one
+                            String fallbackEmoji = '🛒';
+                            if (cat.name.toLowerCase().contains('meat')) fallbackEmoji = '🍗';
+                            if (cat.name.toLowerCase().contains('dairy')) fallbackEmoji = '🥚';
+                            if (cat.name.toLowerCase().contains('produce')) fallbackEmoji = '🌶️';
+                            if (cat.name.toLowerCase().contains('pantry')) fallbackEmoji = '🍘';
+                            
+                            return CategoryChip(
+                              emoji: fallbackEmoji,
+                              imageUrl: cat.iconPath,
+                              label: cat.name,
+                              isSelected: activeCat == cat.name,
+                              onTap: () => handleCategoryTap(cat.name),
+                            );
+                          },
+                        );
+                      },
                     ),
-                    const SizedBox(width: 12),
-                    CategoryChip(
-                      emoji: '🍘', 
-                      label: 'Pantry', 
-                      isSelected: activeCat == 'Pantry',
-                      onTap: () => handleCategoryTap('Pantry'),
-                    ),
-                    const SizedBox(width: 12),
-                    CategoryChip(
-                      emoji: '🍗', 
-                      label: 'Meat & Poultry', 
-                      isSelected: activeCat == 'Meat & Poultry',
-                      onTap: () => handleCategoryTap('Meat & Poultry'),
-                    ),
-                    const SizedBox(width: 12),
-                    CategoryChip(
-                      emoji: '🌶️', 
-                      label: 'Fresh Produce', 
-                      isSelected: activeCat == 'Fresh Produce',
-                      onTap: () => handleCategoryTap('Fresh Produce'),
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 32),
 
               // 2. Promo Banner
-              Container(
-                width: double.infinity,
-                height: 160,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/banner.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.black.withOpacity(0.4),
-                  ),
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'SayFoods',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                        Text(
-                          'Introducing',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                        ),
-                        Text(
-                          'Eggs & Cousins',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              const AdsCarousel(),
               const SizedBox(height: 32),
 
               // 3. Product Grid (Powered by Riverpod!)

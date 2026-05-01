@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sayfoods_app/src/features/cart/application/cart_provider.dart';
 import 'package:sayfoods_app/src/features/products/domain/product_model.dart';
 import 'package:sayfoods_app/src/shared/widgets/product_card.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 class ProductDetailsScreen extends ConsumerStatefulWidget {
   final Product product;
@@ -75,23 +76,23 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                       .addItem(widget.product, _quantity);
 
                   // 2. Show a glorious success message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${widget.product.name} added to cart!'),
-                      backgroundColor: Colors.green,
-                      duration: const Duration(seconds: 2),
-                      action: SnackBarAction(
-                        label: 'VIEW',
-                        textColor: Colors.white,
-                        onPressed: () {
-                          // Future: Navigate to the Cart Screen
-                        },
-                      ),
-                    ),
+                  SayfoodsModal.show(
+                    context: context,
+                    type: SayfoodsModalType.success,
+                    title: 'Added to Cart',
+                    subtitle: '${widget.product.name} added to cart!',
+                    primaryButtonText: 'KEEP SHOPPING',
+                    onPrimaryPressed: () {
+                      Navigator.of(context).pop(); // dismiss modal
+                      Navigator.of(context).pop(); // dismiss product details
+                    },
+                    secondaryButtonText: 'VIEW CART',
+                    onSecondaryPressed: () {
+                      Navigator.of(context).pop(); // dismiss modal
+                      Navigator.of(context).pop(); // dismiss product details
+                      // Future: Navigate to cart
+                    },
                   );
-
-                  // 3. Pop the user back to the Home Screen so they can keep shopping
-                  Navigator.of(context).pop();
                 },
                 child: const Text(
                   'Add to Cart',
