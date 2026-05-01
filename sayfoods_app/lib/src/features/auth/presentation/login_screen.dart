@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // Screens & Widgets
 import 'package:sayfoods_app/src/features/auth/presentation/register_screen.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_text_field.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
 
 // Services
 import 'package:sayfoods_app/src/features/auth/application/auth_service.dart';
@@ -49,21 +51,65 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.message,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred'),
-            backgroundColor: Colors.red,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'An unexpected error occurred',
         );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- PASSWORD RESET ---
+  Future<void> _resetPassword() async {
+    final email = await TextInputDialog.show(
+      context: context,
+      title: 'Reset Password',
+      initialValue: _emailController.text,
+    );
+
+    if (email == null || email.isEmpty) return;
+
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email.trim());
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Email Sent',
+          subtitle: 'Please check your inbox for the password reset link.',
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.message,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'An unexpected error occurred',
+        );
+      }
     }
   }
 
@@ -80,20 +126,20 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Supabase Error: ${e.message}'),
-            backgroundColor: Colors.red,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Supabase Error: ${e.message}',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-In Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Google Sign-In Error: $e',
         );
       }
     } finally {
@@ -184,9 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {
-                          // TODO: Implement password reset flow
-                        },
+                        onPressed: _resetPassword,
                         child: const Text(
                           'Forgot your Password?',
                           style: TextStyle(

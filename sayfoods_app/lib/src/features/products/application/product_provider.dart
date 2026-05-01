@@ -1,9 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/product_model.dart';
+import '../domain/category_model.dart';
 
 // Tracks which category the user has currently tapped (null means "All")
 final selectedCategoryProvider = StateProvider<String?>((ref) => null);
+
+// Fetches the list of categories from Supabase
+final categoryListProvider = FutureProvider<List<CategoryModel>>((ref) async {
+  final supabase = Supabase.instance.client;
+  final response = await supabase.from('categories').select();
+  return response.map((json) => CategoryModel.fromJson(json)).toList();
+});
 
 // A FutureProvider is perfect for fetching a list of items once when the screen loads
 final productListProvider = FutureProvider<List<Product>>((ref) async {

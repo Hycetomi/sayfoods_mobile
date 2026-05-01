@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sayfoods_app/src/features/admin/application/admin_product_provider.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/add_edit_product_screen.dart';
 import 'dart:async';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 class ManageProductsScreen extends ConsumerStatefulWidget {
   const ManageProductsScreen({super.key});
@@ -89,38 +90,35 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                   child: const Icon(Icons.delete_forever, color: Colors.white, size: 30),
                 ),
                 confirmDismiss: (direction) async {
-                  return await showDialog<bool>(
+                  return await SayfoodsModal.show<bool>(
                     context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Delete Product?'),
-                        content: Text('You are about to delete "${product.name}".\n\nThis action removes it entirely from the database and cannot be undone. Proceed?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('DELETE', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      );
-                    },
+                    type: SayfoodsModalType.warning,
+                    title: 'Delete Product?',
+                    subtitle: 'You are about to delete "${product.name}".\n\nThis action removes it entirely from the database and cannot be undone. Proceed?',
+                    primaryButtonText: 'DELETE',
+                    onPrimaryPressed: () => Navigator.of(context).pop(true),
+                    secondaryButtonText: 'CANCEL',
+                    onSecondaryPressed: () => Navigator.of(context).pop(false),
                   );
                 },
                 onDismissed: (direction) async {
                   try {
                     await ref.read(adminProductListProvider.notifier).deleteProduct(product.id);
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('${product.name} deleted'), backgroundColor: Colors.black87),
+                      SayfoodsModal.show(
+                        context: context,
+                        type: SayfoodsModalType.success,
+                        title: 'Deleted',
+                        subtitle: '${product.name} deleted',
                       );
                     }
                   } catch (e) {
                      if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                      SayfoodsModal.show(
+                        context: context,
+                        type: SayfoodsModalType.error,
+                        title: 'Error',
+                        subtitle: e.toString(),
                       );
                     }
                   }

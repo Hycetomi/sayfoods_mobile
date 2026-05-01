@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Your custom widgets and services
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_text_field.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 import 'package:sayfoods_app/src/features/auth/application/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -44,25 +45,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful! Please check your email.'),
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Registration Successful',
+          subtitle: 'Registration successful! Please check your email.',
         );
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: Colors.red),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.message,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An unexpected error occurred'),
-            backgroundColor: Colors.red,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'An unexpected error occurred',
         );
       }
     } finally {
@@ -80,20 +85,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // and navigate the user away from this screen!
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Supabase Error: ${e.message}'),
-            backgroundColor: Colors.red,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Supabase Error: ${e.message}',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-In Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Google Sign-In Error: $e',
         );
       }
     } finally {

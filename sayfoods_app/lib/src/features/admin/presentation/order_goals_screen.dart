@@ -5,6 +5,7 @@ import 'package:sayfoods_app/src/features/admin/application/order_goal_provider.
 import 'package:sayfoods_app/src/features/admin/domain/order_goal_model.dart';
 import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
 import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 class OrderGoalsScreen extends ConsumerStatefulWidget {
   const OrderGoalsScreen({super.key});
@@ -33,13 +34,21 @@ class _OrderGoalsScreenState extends ConsumerState<OrderGoalsScreen> {
         try {
           await ref.read(orderGoalsProvider.notifier).setGoal(monthYear: monthYear, target: val);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text('Global Order Goal mathematically active!'), backgroundColor: Colors.green),
+            SayfoodsModal.show(
+              context: context,
+              type: SayfoodsModalType.success,
+              title: 'Success',
+              subtitle: 'Global Order Goal mathematically active!',
             );
           }
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+            SayfoodsModal.show(
+              context: context,
+              type: SayfoodsModalType.error,
+              title: 'Error',
+              subtitle: e.toString(),
+            );
           }
         }
       }
@@ -65,13 +74,21 @@ class _OrderGoalsScreenState extends ConsumerState<OrderGoalsScreen> {
             targetVolume: val
           );
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-               SnackBar(content: Text('$catName Limits natively locked!'), backgroundColor: Colors.green),
+            SayfoodsModal.show(
+              context: context,
+              type: SayfoodsModalType.success,
+              title: 'Success',
+              subtitle: '$catName Limits natively locked!',
             );
           }
         } catch (e) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+            SayfoodsModal.show(
+              context: context,
+              type: SayfoodsModalType.error,
+              title: 'Error',
+              subtitle: e.toString(),
+            );
           }
         }
       }

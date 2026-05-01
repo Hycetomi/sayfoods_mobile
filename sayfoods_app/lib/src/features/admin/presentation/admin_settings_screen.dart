@@ -6,6 +6,7 @@ import 'package:sayfoods_app/src/features/admin/presentation/order_goals_screen.
 import 'package:sayfoods_app/src/features/admin/presentation/order_history_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/manage_users_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/edit_admin_profile_screen.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/manage_ads_screen.dart';
 
 class AdminSettingsScreen extends StatelessWidget {
   const AdminSettingsScreen({super.key});
@@ -79,6 +80,17 @@ class AdminSettingsScreen extends StatelessWidget {
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
+
+              _buildSettingsTile(
+                context,
+                title: 'Manage Ads & Banners',
+                icon: Icons.campaign,
+                color: Colors.green,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ManageAdsScreen()),
+                ),
+              ),
               
               _buildSettingsTile(
                 context,

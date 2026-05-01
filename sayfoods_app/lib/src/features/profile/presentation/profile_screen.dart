@@ -1,12 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // Ensure Riverpod is imported
-import 'package:supabase_flutter/supabase_flutter.dart'; // <-- Needed for Supabase updates
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 
 // --- Shared & Feature Widgets ---
 import 'package:sayfoods_app/src/features/profile/presentation/widgets/profile_detail_row.dart';
 import 'package:sayfoods_app/src/features/profile/presentation/widgets/settings_action_row.dart';
 import 'package:sayfoods_app/src/features/profile/presentation/widgets/add_address_sheet.dart';
 import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 
 // --- Providers ---
 import 'package:sayfoods_app/src/features/profile/application/address_provider.dart';
@@ -42,17 +45,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ref.invalidate(userProfileProvider);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Success',
+          subtitle: 'Updated successfully!',
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.toString(),
         );
       }
     }
@@ -67,21 +73,122 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         UserAttributes(email: newEmail),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Confirmation link sent! Please check your new email inbox.',
-            ),
-            duration: Duration(seconds: 4),
-          ),
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Email Update',
+          subtitle: 'Confirmation link sent! Please check your new email inbox.',
         );
       }
     } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: e.toString(),
         );
+      }
     }
+  }
+
+  // --- 3. Avatar Upload Logic ---
+  Future<void> _updateAvatarUrl(String url) async {
+    await _updateProfileDatabase('avatar_url', url);
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (pickedFile == null) return;
+    
+    try {
+      // Show loading indicator or simple message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uploading avatar...')),
+        );
+      }
+
+      final file = File(pickedFile.path);
+      final fileExt = pickedFile.name.split('.').last;
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+      
+      final fileName = '${user.id}/profile.$fileExt';
+      
+      await Supabase.instance.client.storage
+          .from('avatars')
+          .upload(fileName, file, fileOptions: const FileOptions(upsert: true));
+
+      final publicUrl = Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+          
+      // Force cache break by appending timestamp
+      final finalUrl = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
+      await _updateAvatarUrl(finalUrl);
+    } catch (e) {
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Upload Failed',
+          subtitle: e.toString(),
+        );
+      }
+    }
+  }
+
+  void _showAvatarOptions() {
+    SayfoodsModal.showBottomSheet(
+      context: context,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Change Avatar',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          ListTile(
+            leading: const Icon(Icons.photo_library, color: Color(0xFF5A189A)),
+            title: const Text('Upload from Gallery'),
+            onTap: () {
+              Navigator.pop(context);
+              _pickAndUploadAvatar();
+            },
+          ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Or choose a food theme:', style: TextStyle(color: Colors.grey)),
+            ),
+          ),
+          ListTile(
+            leading: const CircleAvatar(backgroundImage: AssetImage('assets/images/meat.png')),
+            title: const Text('Meat Theme'),
+            onTap: () {
+              Navigator.pop(context);
+              _updateAvatarUrl('assets/images/meat.png');
+            },
+          ),
+          ListTile(
+            leading: const CircleAvatar(backgroundImage: AssetImage('assets/images/logo.png')),
+            title: const Text('SayFoods Logo'),
+            onTap: () {
+              Navigator.pop(context);
+              _updateAvatarUrl('assets/images/logo.png');
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
   }
 
   @override
@@ -133,19 +240,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                        child: const CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.white,
-                          backgroundImage: AssetImage(
-                            'assets/images/logo.png',
-                          ), // Replace with user avatar
+                        child: profileAsyncValue.when(
+                          data: (profile) {
+                            final String? url = profile?.avatarUrl;
+                            ImageProvider imageProvider;
+                            if (url != null && url.isNotEmpty) {
+                              if (url.startsWith('http')) {
+                                imageProvider = NetworkImage(url);
+                              } else {
+                                imageProvider = AssetImage(url);
+                              }
+                            } else {
+                              imageProvider = const AssetImage('assets/images/logo.png');
+                            }
+                            
+                            return CircleAvatar(
+                              radius: 40,
+                              backgroundColor: Colors.white,
+                              backgroundImage: imageProvider,
+                            );
+                          },
+                          loading: () => const CircleAvatar(
+                            radius: 40,
+                            backgroundColor: Colors.white,
+                            child: CircularProgressIndicator(),
+                          ),
+                          error: (_, __) => const CircleAvatar(
+                            radius: 40,
+                            backgroundColor: Colors.white,
+                            backgroundImage: AssetImage('assets/images/logo.png'),
+                          ),
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {
-                          // TODO: Open Image Picker
-                          print("Edit Avatar Clicked!");
-                        },
+                        onTap: _showAvatarOptions,
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: const BoxDecoration(
@@ -319,16 +447,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         // Add New Address Button
                         InkWell(
                           onTap: () {
-                            showModalBottomSheet(
+                            SayfoodsModal.showBottomSheet(
                               context: context,
                               isScrollControlled: true,
-                              backgroundColor: Colors.white,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(30),
-                                ),
-                              ),
-                              builder: (context) => const AddAddressSheet(),
+                              child: const AddAddressSheet(),
                             );
                           }, // Triggers the bottom sheet!
                           child: Container(
