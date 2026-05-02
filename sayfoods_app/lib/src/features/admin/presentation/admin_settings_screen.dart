@@ -7,6 +7,8 @@ import 'package:sayfoods_app/src/features/admin/presentation/order_history_scree
 import 'package:sayfoods_app/src/features/admin/presentation/manage_users_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/edit_admin_profile_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/manage_ads_screen.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/commission_settings_screen.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/manage_rider_schedules_screen.dart';
 
 class AdminSettingsScreen extends StatelessWidget {
   const AdminSettingsScreen({super.key});
@@ -80,6 +82,28 @@ class AdminSettingsScreen extends StatelessWidget {
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
+
+              _buildSettingsTile(
+                context,
+                title: 'Commission Settings',
+                icon: Icons.payments,
+                color: Colors.blue,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CommissionSettingsScreen()),
+                ),
+              ),
+
+              _buildSettingsTile(
+                context,
+                title: 'Rider Schedules',
+                icon: Icons.calendar_month,
+                color: Colors.teal,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ManageRiderSchedulesScreen()),
+                ),
+              ),
 
               _buildSettingsTile(
                 context,

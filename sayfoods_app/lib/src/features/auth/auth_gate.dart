@@ -6,6 +6,7 @@ import 'presentation/welcome_screen.dart';
 // Import your new Home Screen
 import 'package:sayfoods_app/src/features/home/presentation/home_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/admin_main_screen.dart';
+import 'package:sayfoods_app/src/features/rider/presentation/rider_main_screen.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -32,7 +33,7 @@ class AuthGate extends ConsumerWidget {
             if (role == 'admin') {
               return const AdminMainScreen();
             } else if (role == 'rider') {
-              return const Scaffold(body: Center(child: Text('Rider Hub')));
+              return const RiderMainScreen();
             } else {
               // 3. The Client Route!
               // This is the default fallback for standard users.
