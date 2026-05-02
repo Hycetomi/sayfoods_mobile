@@ -45,6 +45,8 @@ class OrderModel {
   final double totalAmount;
   final String paymentStatus;
   final DateTime createdAt;
+  final DateTime? completedAt;
+  final double commissionEarned;
   final List<OrderItemModel> items;
 
   OrderModel({
@@ -60,6 +62,8 @@ class OrderModel {
     required this.totalAmount,
     required this.paymentStatus,
     required this.createdAt,
+    this.completedAt,
+    this.commissionEarned = 0.0,
     required this.items,
   });
 
@@ -99,6 +103,10 @@ class OrderModel {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'].toString()).toLocal()
           : DateTime.now(),
+      completedAt: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'].toString()).toLocal()
+          : null,
+      commissionEarned: (json['commission_earned'] as num?)?.toDouble() ?? 0.0,
       items: mappedItems,
     );
   }

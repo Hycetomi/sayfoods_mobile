@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/admin_dashboard_screen.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/admin_riders_hub_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/admin_settings_screen.dart';
 
 class AdminMainScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       const AdminDashboardScreen(),
-      const Center(child: Text('Riders Allocation UI')),
+      const AdminRidersHubScreen(),
       const AdminSettingsScreen(),
     ];
 
@@ -29,7 +30,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),

@@ -15,6 +15,7 @@ import 'package:sayfoods_app/src/features/home/presentation/widgets/ads_carousel
 // Providers
 import 'package:sayfoods_app/src/features/products/application/product_provider.dart';
 
+import 'package:sayfoods_app/src/features/chat/presentation/client_messages_screen.dart';
 import 'package:sayfoods_app/src/features/orders/presentation/orders_screen.dart';
 import 'package:sayfoods_app/src/features/products/presentation/search_screen.dart';
 
@@ -33,7 +34,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     final List<Widget> pages = [
       _buildHomeView(),
       const OrdersScreen(),
-      const Center(child: Text('Messages Coming Soon', style: TextStyle(fontSize: 18, color: Colors.grey))),
+      const ClientMessagesScreen(),
     ];
 
     return Scaffold(
@@ -46,7 +47,7 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:sayfoods_app/src/features/chat/application/chat_provider.dart';
+import 'package:sayfoods_app/src/features/chat/presentation/chat_screen.dart';
 import 'package:sayfoods_app/src/features/orders/domain/order_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
@@ -50,6 +52,22 @@ class OrderDetailNotifier extends StateNotifier<AsyncValue<void>> {
       rethrow;
     }
   }
+
+  Future<void> adjustCommission(String orderId, double amount) async {
+    state = const AsyncValue.loading();
+    try {
+      final res = await Supabase.instance.client
+          .from('orders')
+          .update({'commission_earned': amount})
+          .eq('id', orderId)
+          .select();
+      if (res.isEmpty) throw Exception('Commission update rejected. Check RLS policies.');
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
 }
 
 final orderDetailNotifierProvider =
@@ -81,8 +99,12 @@ class _AdminOrderDetailScreenState
   final _statuses = [
     'pending',
     'accepted',
+    'sourcing',
+    'ready_for_pickup',
     'out_for_delivery',
+    'delivering',
     'delivered',
+    'completed',
     'cancelled',
   ];
 
@@ -92,17 +114,31 @@ class _AdminOrderDetailScreenState
     _currentStatus = widget.order.status;
     _selectedRiderId = widget.order.riderId;
     _selectedRiderName = widget.order.riderName;
+    _commissionController = TextEditingController(
+        text: widget.order.commissionEarned.toStringAsFixed(2));
+  }
+
+  @override
+  void dispose() {
+    _commissionController.dispose();
+    super.dispose();
   }
 
   Color _statusColor(String s) {
     switch (s.toLowerCase()) {
       case 'delivered':
+      case 'completed':
         return Colors.green;
       case 'pending':
         return Colors.orange;
       case 'accepted':
         return Colors.blue;
+      case 'sourcing':
+        return Colors.deepPurple;
+      case 'ready_for_pickup':
+        return Colors.indigo;
       case 'out_for_delivery':
+      case 'delivering':
         return Colors.teal;
       case 'cancelled':
         return Colors.red;
@@ -165,6 +201,81 @@ class _AdminOrderDetailScreenState
     }
   }
 
+  bool _isRevoking = false;
+  bool _isAdjusting = false;
+  late TextEditingController _commissionController;
+
+  Future<void> _revokeCommission() async {
+    setState(() => _isRevoking = true);
+    try {
+      await Supabase.instance.client
+          .from('orders')
+          .update({'commission_earned': 0})
+          .eq('id', widget.order.id);
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Commission Revoked',
+          subtitle: 'The commission for this order has been set to ₦0.',
+        );
+        Navigator.pop(context, true); // signal refresh
+      }
+    } catch (e) {
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Failed to revoke: $e',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRevoking = false);
+    }
+  }
+
+  Future<void> _adjustCommission() async {
+    final raw = _commissionController.text.trim();
+    final amount = double.tryParse(raw);
+    if (amount == null || amount < 0) {
+      SayfoodsModal.show(
+        context: context,
+        type: SayfoodsModalType.error,
+        title: 'Invalid Amount',
+        subtitle: 'Please enter a valid non-negative number.',
+      );
+      return;
+    }
+    setState(() => _isAdjusting = true);
+    try {
+      await ref
+          .read(orderDetailNotifierProvider.notifier)
+          .adjustCommission(widget.order.id, amount);
+      if (mounted) {
+        final fmt = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Commission Adjusted',
+          subtitle: 'Commission updated to ${fmt.format(amount)}.',
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Failed to adjust: $e',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAdjusting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
@@ -194,20 +305,26 @@ class _AdminOrderDetailScreenState
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _orange.withOpacity(0.12),
+                  color: _orange.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.chat_bubble_outline_rounded,
                     color: _orange, size: 20),
               ),
-              onPressed: () {
-                SayfoodsModal.show(
-                  context: context,
-                  type: SayfoodsModalType.info,
-                  title: 'Coming Soon',
-                  subtitle: 'Messaging feature coming soon!',
-                );
-              },
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChatScreen(
+                    params: ChatChannelParams(
+                      channelType: 'admin_client',
+                      orderId: order.id,
+                    ),
+                    title: order.clientName ?? 'Customer',
+                    subtitle:
+                        'Order #${order.id.substring(0, 8).toUpperCase()}',
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -276,7 +393,7 @@ class _AdminOrderDetailScreenState
                 label: Text(_labelOf(s)),
                 selected: isSelected,
                 onSelected: (_) => setState(() => _currentStatus = s),
-                selectedColor: color.withOpacity(0.15),
+                selectedColor: color.withValues(alpha: 0.15),
                 labelStyle: TextStyle(
                   color: isSelected ? color : Colors.grey.shade700,
                   fontWeight:
@@ -386,6 +503,114 @@ class _AdminOrderDetailScreenState
           ),
           const SizedBox(height: 28),
 
+          // ── Logistics & Commission ───────────────────────────────────
+          if (order.status == 'completed' && order.riderId != null) ...[
+            _sectionHeader('Logistics & Commission'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey.shade100),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _finRow('Commission Earned', fmt.format(order.commissionEarned)),
+                  if (order.completedAt != null) ...[
+                    const SizedBox(height: 8),
+                    _finRow('Completed At', DateFormat('MMM d, h:mm a').format(order.completedAt!)),
+                  ],
+                  const SizedBox(height: 16),
+                  const Divider(height: 1),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Adjust Commission',
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _commissionController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      prefixText: '₦ ',
+                      hintText: '0.00',
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            BorderSide(color: Colors.grey.shade200),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _purple),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isAdjusting ? null : _adjustCommission,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _purple,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
+                      child: _isAdjusting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Text('Save Adjustment',
+                              style:
+                                  TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  if (order.commissionEarned > 0) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _isRevoking ? null : _revokeCommission,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isRevoking
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    color: Colors.red, strokeWidth: 2))
+                            : const Text('Revoke Commission'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+          ],
+
           // ── Items Ordered ─────────────────────────────────────────────
           _sectionHeader('Items Ordered (${order.items.length})'),
           const SizedBox(height: 12),
@@ -402,7 +627,7 @@ class _AdminOrderDetailScreenState
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: _purple.withOpacity(0.07),
+                        color: _purple.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.fastfood_rounded,
@@ -501,9 +726,9 @@ class _AdminOrderDetailScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
