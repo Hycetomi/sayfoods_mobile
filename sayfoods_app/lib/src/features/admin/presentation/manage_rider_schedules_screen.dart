@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/admin_order_detail_screen.dart'; // ridersListProvider
 import 'package:sayfoods_app/src/features/admin/application/rider_schedule_provider.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 class ManageRiderSchedulesScreen extends ConsumerStatefulWidget {
   const ManageRiderSchedulesScreen({super.key});
@@ -69,9 +70,9 @@ class _ManageRiderSchedulesScreenState
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString().contains('duplicate')
+          subtitle: ErrorHelper.getErrorMessage(e).contains('duplicate')
               ? '$_selectedRiderName is already scheduled for that date.'
-              : 'Failed to add shift: $e',
+              : 'Failed to add shift: ${ErrorHelper.getErrorMessage(e)}',
         );
       }
     }
@@ -89,32 +90,29 @@ class _ManageRiderSchedulesScreenState
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: 'Failed to update shift: $e',
+          subtitle: 'Failed to update shift: ${ErrorHelper.getErrorMessage(e)}',
         );
       }
     }
   }
 
   Future<void> _deleteShift(String scheduleId) async {
-    final confirm = await showDialog<bool>(
+    bool confirm = false;
+    await SayfoodsModal.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Shift'),
-        content:
-            const Text('Are you sure you want to permanently delete this shift?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child:
-                  const Text('Delete', style: TextStyle(color: Colors.red))),
-        ],
-      ),
+      type: SayfoodsModalType.warning,
+      title: 'Delete Shift',
+      subtitle: 'Are you sure you want to permanently delete this shift?',
+      primaryButtonText: 'Delete',
+      onPrimaryPressed: () {
+        confirm = true;
+        Navigator.pop(context);
+      },
+      secondaryButtonText: 'Cancel',
+      onSecondaryPressed: () => Navigator.pop(context),
     );
 
-    if (confirm != true) return;
+    if (!confirm) return;
 
     try {
       await ref
@@ -135,7 +133,7 @@ class _ManageRiderSchedulesScreenState
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: 'Failed to delete shift: $e',
+          subtitle: 'Failed to delete shift: ${ErrorHelper.getErrorMessage(e)}',
         );
       }
     }
@@ -176,7 +174,7 @@ class _ManageRiderSchedulesScreenState
             const SizedBox(height: 12),
             ridersAsync.when(
               loading: () => const LinearProgressIndicator(),
-              error: (e, _) => Text('Could not load riders: $e',
+              error: (e, _) => Text('Could not load riders: ${ErrorHelper.getErrorMessage(e)}',
                   style: const TextStyle(color: Colors.red)),
               data: (riders) {
                 if (riders.isEmpty) {
@@ -256,7 +254,7 @@ class _ManageRiderSchedulesScreenState
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
           child:
-              Text('Error loading schedules: $e', style: const TextStyle(color: Colors.red))),
+              Text('Error loading schedules: ${ErrorHelper.getErrorMessage(e)}', style: const TextStyle(color: Colors.red))),
       data: (schedules) {
         if (schedules.isEmpty) {
           return const Center(
@@ -358,7 +356,7 @@ class _ManageRiderSchedulesScreenState
                   // Toggle
                   Switch(
                     value: isActive,
-                    activeColor: Colors.green,
+                    activeThumbColor: Colors.green,
                     onChanged: (val) =>
                         _toggleShift(shift['id'].toString(), val),
                   ),

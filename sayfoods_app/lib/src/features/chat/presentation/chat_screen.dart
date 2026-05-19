@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sayfoods_app/src/features/chat/application/chat_provider.dart';
 import 'package:sayfoods_app/src/features/chat/domain/message_model.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final ChatChannelParams params;
@@ -60,7 +61,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Send Failed',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     } finally {

@@ -4,6 +4,8 @@ import 'package:sayfoods_app/src/features/cart/application/cart_provider.dart';
 import 'package:sayfoods_app/src/features/products/domain/product_model.dart';
 import 'package:sayfoods_app/src/shared/widgets/product_card.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sayfoods_app/src/shared/theme/app_colors.dart';
 
 class ProductDetailsScreen extends ConsumerStatefulWidget {
   final Product product;
@@ -17,7 +19,7 @@ class ProductDetailsScreen extends ConsumerStatefulWidget {
 
 class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   int _quantity = 1;
-  final Color _primaryPurple = const Color(0xFF5A189A);
+  final Color _primaryPurple = AppColors.primary;
 
   void _incrementQuantity() {
     setState(() => _quantity++);
@@ -32,16 +34,16 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       // The sticky bottom bar for price and Add to Cart
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 20,
               offset: const Offset(0, -5),
             ),
           ],
@@ -136,9 +138,9 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: CircleAvatar(
-                      backgroundColor: Colors.black.withOpacity(0.3),
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
                       child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(LucideIcons.chevronLeft, color: AppColors.textPrimary),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ),
@@ -165,13 +167,14 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                               widget.product.name.toUpperCase(),
                               style: const TextStyle(
                                 fontSize: 24,
+                                color: AppColors.textPrimary,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 4),
                             const Text(
                               'Available in stock',
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(color: AppColors.success),
                             ),
                           ],
                         ),
@@ -182,11 +185,11 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                           GestureDetector(
                             onTap: _decrementQuantity,
                             child: CircleAvatar(
-                              radius: 14,
-                              backgroundColor: _primaryPurple,
+                              radius: 16,
+                              backgroundColor: AppColors.surfaceVariant,
                               child: const Icon(
-                                Icons.remove,
-                                color: Colors.white,
+                                LucideIcons.minus,
+                                color: AppColors.primary,
                                 size: 18,
                               ),
                             ),
@@ -206,10 +209,10 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                           GestureDetector(
                             onTap: _incrementQuantity,
                             child: CircleAvatar(
-                              radius: 14,
-                              backgroundColor: _primaryPurple,
+                              radius: 16,
+                              backgroundColor: AppColors.primary,
                               child: const Icon(
-                                Icons.add,
+                                LucideIcons.plus,
                                 color: Colors.white,
                                 size: 18,
                               ),
@@ -224,19 +227,19 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                   // 3. Description
                   const Text(
                     'Product Description',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     widget.product.description,
-                    style: const TextStyle(color: Colors.black54, height: 1.5),
+                    style: const TextStyle(color: AppColors.textSecondary, height: 1.6),
                   ),
                   const SizedBox(height: 32),
 
                   // 4. Reviews (Static for now to match design)
                   const Text(
                     'Product Reviews',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -259,16 +262,18 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                                 'Fola Fagbemi',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
                                 ),
                               ),
+                              const SizedBox(height: 2),
                               Row(
                                 children: List.generate(
                                   5,
                                   (index) => const Icon(
-                                    Icons.star_border,
-                                    color: Colors.orange,
-                                    size: 12,
+                                    LucideIcons.star,
+                                    color: AppColors.warning,
+                                    size: 14,
                                   ),
                                 ),
                               ),
@@ -312,6 +317,7 @@ class _ProductDetailsScreenState extends ConsumerState<ProductDetailsScreen> {
                     itemCount: 2, // Just 2 placeholders for now
                     itemBuilder: (context, index) {
                       return ProductCard(
+                        productId: '',
                         title: 'MEAT',
                         description: '3kg of processed cow meat',
                         price: '₦3,000',

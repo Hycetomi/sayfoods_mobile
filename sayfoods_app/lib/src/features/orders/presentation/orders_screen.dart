@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sayfoods_app/src/features/cart/application/cart_provider.dart';
+import 'package:sayfoods_app/src/features/cart/presentation/cart_screen.dart';
 import 'package:sayfoods_app/src/features/orders/application/order_provider.dart';
 import 'package:sayfoods_app/src/features/orders/presentation/widgets/ongoing_timeline.dart';
 import 'package:sayfoods_app/src/features/orders/presentation/widgets/completed_order_card.dart';
 import 'package:sayfoods_app/src/features/orders/presentation/order_details_screen.dart';
 import 'package:sayfoods_app/src/features/products/presentation/search_screen.dart';
+import 'package:sayfoods_app/src/shared/utils/page_transitions.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -50,7 +53,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black87), 
             onPressed: () {
-               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
+               Navigator.of(context).push(FadeSlideRoute(builder: (_) => const SearchScreen()));
             }
           ),
           IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black87), onPressed: () {}),
@@ -103,13 +106,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
                                 isOngoing: true,
                                 onViewDetails: () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+                                    FadeSlideRoute(builder: (_) => OrderDetailsScreen(order: order)),
                                   );
                                 },
                                 onReorder: () {
                                   // Can just navigate to timeline as well for ongoing
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => OngoingTimelineScreen(order: order)),
+                                    FadeSlideRoute(builder: (_) => OngoingTimelineScreen(order: order)),
                                   );
                                 },
                               );
@@ -128,11 +131,17 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> with SingleTickerPr
                                 order: order,
                                 onViewDetails: () {
                                   Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+                                    FadeSlideRoute(builder: (_) => OrderDetailsScreen(order: order)),
                                   );
                                 },
                                 onReorder: () {
-                                  // Future: Add items back to cart
+                                  ref
+                                      .read(cartProvider.notifier)
+                                      .addItemsFromOrder(order.items);
+                                  Navigator.of(context).push(
+                                    FadeSlideRoute(
+                                        builder: (_) => const CartScreen()),
+                                  );
                                 },
                               );
                             },

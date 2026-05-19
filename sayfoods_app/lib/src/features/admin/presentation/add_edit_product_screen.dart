@@ -5,6 +5,7 @@ import 'package:sayfoods_app/src/features/admin/application/admin_product_provid
 import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 import 'dart:io';
 
 class AddEditProductScreen extends ConsumerStatefulWidget {
@@ -74,7 +75,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: 'Error picking image: $e',
+          subtitle: 'Error picking image: ${ErrorHelper.getErrorMessage(e)}',
         );
       }
     }
@@ -139,7 +140,7 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     } finally {
@@ -198,11 +199,11 @@ class _AddEditProductScreenState extends ConsumerState<AddEditProductScreen> {
               _buildLabel('Category'),
               categoriesAsync.when(
                 loading: () => const LinearProgressIndicator(),
-                error: (e, st) => Text('Error loading categories: $e', style: const TextStyle(color: Colors.red)),
+                error: (e, st) => Text('Error loading categories: ${ErrorHelper.getErrorMessage(e)}', style: const TextStyle(color: Colors.red)),
                 data: (categories) {
                    return DropdownButtonFormField<String>(
                      decoration: _inputDecoration('Select a Category'),
-                     value: _selectedCategoryId,
+                     initialValue: _selectedCategoryId,
                      items: categories.map((cat) {
                        return DropdownMenuItem(
                          value: cat.id,

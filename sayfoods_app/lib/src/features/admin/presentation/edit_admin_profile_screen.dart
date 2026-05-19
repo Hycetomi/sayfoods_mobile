@@ -6,6 +6,7 @@ import 'package:sayfoods_app/src/features/profile/application/profile_provider.d
 import 'package:sayfoods_app/src/features/profile/presentation/widgets/profile_detail_row.dart';
 import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 class EditAdminProfileScreen extends ConsumerStatefulWidget {
   const EditAdminProfileScreen({super.key});
@@ -44,7 +45,7 @@ class _EditAdminProfileScreenState extends ConsumerState<EditAdminProfileScreen>
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     }
@@ -70,7 +71,7 @@ class _EditAdminProfileScreenState extends ConsumerState<EditAdminProfileScreen>
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     }

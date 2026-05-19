@@ -8,6 +8,10 @@ import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 import 'package:sayfoods_app/src/features/admin/application/system_settings_provider.dart';
 import 'package:sayfoods_app/src/features/chat/application/chat_provider.dart';
 import 'package:sayfoods_app/src/features/chat/presentation/chat_screen.dart';
+import 'package:sayfoods_app/src/features/orders/presentation/widgets/live_delivery_map.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sayfoods_app/src/shared/theme/app_colors.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 // Watches orders assigned to this rider that are still in-progress (all 3 active statuses).
 // Supabase .stream() only supports a single .eq() server filter, so we scope by rider_id
@@ -25,8 +29,9 @@ final activeDeliveriesProvider = StreamProvider<List<OrderModel>>((ref) {
       .map((data) => data
           .map((json) => OrderModel.fromJson(json))
           .where((order) =>
-              order.status == 'delivering' ||
+              order.status == 'ready_for_pickup' || // admin pre-assigned
               order.status == 'out_for_delivery' ||
+              order.status == 'delivering' ||
               order.status == 'delivered')
           .toList());
 });
@@ -40,7 +45,7 @@ class ActiveDeliveryScreen extends ConsumerStatefulWidget {
 }
 
 class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
-  static const _purple = Color(0xFF5B1380);
+  static const _purple = AppColors.primary;
 
   // Tracks which order IDs have an in-flight Supabase request — prevents double-tap.
   final Set<String> _loadingOrders = {};
@@ -87,7 +92,7 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     } finally {
@@ -98,7 +103,9 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
   String _successTitle(String status) {
     switch (status) {
       case 'out_for_delivery':
-        return 'Picked Up';
+        return 'Order Accepted';
+      case 'delivering':
+        return 'En Route';
       case 'delivered':
         return 'Arrived';
       case 'completed':
@@ -112,6 +119,8 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
     final id = order.id.substring(0, 8).toUpperCase();
     switch (status) {
       case 'out_for_delivery':
+        return 'Order #$id accepted. Pick up the items and head out.';
+      case 'delivering':
         return 'Order #$id picked up. Head to the drop-off.';
       case 'delivered':
         return 'Marked as arrived at delivery location.';
@@ -135,11 +144,12 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
 
   Widget _stepChip(String status) {
     final Map<String, _StepMeta> meta = {
-      'delivering': _StepMeta('Step 1 of 3 • Pick Up', Colors.orange),
-      'out_for_delivery': _StepMeta('Step 2 of 3 • En Route', Colors.blue),
-      'delivered': _StepMeta('Step 3 of 3 • Arrived', Colors.teal),
+      'ready_for_pickup': const _StepMeta('Assigned • Tap to Accept', AppColors.primary),
+      'out_for_delivery': const _StepMeta('Step 1 of 3 • Picked Up', AppColors.warning),
+      'delivering':       const _StepMeta('Step 2 of 3 • En Route',  AppColors.info),
+      'delivered':        const _StepMeta('Step 3 of 3 • Arrived',   AppColors.success),
     };
-    final m = meta[status] ?? _StepMeta(status, Colors.grey);
+    final m = meta[status] ?? _StepMeta(status, AppColors.textSecondary);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -164,7 +174,7 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
     );
 
     switch (order.status) {
-      case 'delivering':
+      case 'ready_for_pickup':
         return SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -180,12 +190,33 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
                 : () => _progressStatus(context, order, 'out_for_delivery'),
             child: isLoading
                 ? spinner
-                : const Text('Picked Up',
+                : const Text('Accept & Pick Up',
                     style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         );
 
       case 'out_for_delivery':
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: isLoading
+                ? null
+                : () => _progressStatus(context, order, 'delivering'),
+            child: isLoading
+                ? spinner
+                : const Text('Picked Up — En Route',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        );
+
+      case 'delivering':
         return SizedBox(
           width: double.infinity,
           child: ElevatedButton(
@@ -237,7 +268,7 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
     final activeOrders = ref.watch(activeDeliveriesProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       appBar: const SayfoodsAppBar(
         title: 'Active Deliveries',
         showBackButton: false,
@@ -248,7 +279,7 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
             return const Center(
               child: Text(
                 'No active deliveries.',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
               ),
             );
           }
@@ -261,9 +292,12 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 16),
-                elevation: 2,
+                elevation: 0,
+                color: AppColors.surface,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: AppColors.border),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -275,7 +309,7 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
                           Text(
                             'Order #${order.id.substring(0, 8).toUpperCase()}',
                             style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
+                                fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
                           ),
                           _stepChip(order.status),
                         ],
@@ -283,12 +317,14 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'Drop-off: ${order.deliveryAddress}',
-                        style: const TextStyle(fontSize: 14),
+                        style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                       ),
+                      const SizedBox(height: 10),
+                      LiveDeliveryMap(order: order),
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
                         icon: const Icon(
-                            Icons.chat_bubble_outline_rounded,
+                            LucideIcons.messageSquare,
                             size: 16),
                         label: const Text('Chat with Customer'),
                         style: OutlinedButton.styleFrom(
@@ -322,8 +358,8 @@ class _ActiveDeliveryScreenState extends ConsumerState<ActiveDeliveryScreen> {
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.error))),
       ),
     );
   }

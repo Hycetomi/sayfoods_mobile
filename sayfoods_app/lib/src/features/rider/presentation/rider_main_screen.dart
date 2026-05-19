@@ -1,20 +1,32 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sayfoods_app/src/features/chat/application/chat_provider.dart';
 import 'package:sayfoods_app/src/features/chat/presentation/chat_screen.dart';
+import 'package:sayfoods_app/src/features/rider/application/rider_location_service.dart';
 import 'package:sayfoods_app/src/features/rider/presentation/rider_home_screen.dart';
 import 'package:sayfoods_app/src/features/rider/presentation/active_delivery_screen.dart';
 import 'package:sayfoods_app/src/features/rider/presentation/rider_earnings_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class RiderMainScreen extends StatefulWidget {
+class RiderMainScreen extends ConsumerStatefulWidget {
   const RiderMainScreen({super.key});
 
   @override
-  State<RiderMainScreen> createState() => _RiderMainScreenState();
+  ConsumerState<RiderMainScreen> createState() => _RiderMainScreenState();
 }
 
-class _RiderMainScreenState extends State<RiderMainScreen> {
+class _RiderMainScreenState extends ConsumerState<RiderMainScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(riderLocationServiceProvider).requestPermission();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,34 +51,53 @@ class _RiderMainScreenState extends State<RiderMainScreen> {
         index: _selectedIndex,
         children: pages,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.88),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  width: 0.5,
+                ),
+              ),
             ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          selectedItemColor: Colors.orange,
-          unselectedItemColor: Colors.black54,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Icons.home), label: 'Pool'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.delivery_dining), label: 'Active'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.account_balance_wallet), label: 'Earnings'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.headset_mic_rounded), label: 'Dispatch'),
-          ],
+            child: NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (i) =>
+                  setState(() => _selectedIndex = i),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              indicatorColor: const Color(0x1AF28F2A),
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.alwaysShow,
+              animationDuration: const Duration(milliseconds: 300),
+              destinations: const [
+                NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon:
+                        Icon(Icons.home, color: Colors.orange),
+                    label: 'Pool'),
+                NavigationDestination(
+                    icon: Icon(Icons.delivery_dining_outlined),
+                    selectedIcon: Icon(Icons.delivery_dining,
+                        color: Colors.orange),
+                    label: 'Active'),
+                NavigationDestination(
+                    icon: Icon(Icons.account_balance_wallet_outlined),
+                    selectedIcon: Icon(Icons.account_balance_wallet,
+                        color: Colors.orange),
+                    label: 'Earnings'),
+                NavigationDestination(
+                    icon: Icon(Icons.headset_mic_outlined),
+                    selectedIcon: Icon(Icons.headset_mic_rounded,
+                        color: Colors.orange),
+                    label: 'Dispatch'),
+              ],
+            ),
+          ),
         ),
       ),
     );

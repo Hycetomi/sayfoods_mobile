@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sayfoods_app/src/shared/theme/app_colors.dart';
 
 enum SayfoodsModalType { info, success, warning, error, custom }
 
@@ -158,29 +160,29 @@ class _ModalBody extends StatelessWidget {
 
     switch (type) {
       case SayfoodsModalType.success:
-        icon = Icons.check_circle_outline_rounded;
-        iconColor = Colors.green.shade600;
-        iconBgColor = Colors.green.shade50;
+        icon = LucideIcons.checkCircle;
+        iconColor = AppColors.success;
+        iconBgColor = AppColors.success.withValues(alpha: 0.1);
         break;
       case SayfoodsModalType.error:
-        icon = Icons.error_outline_rounded;
-        iconColor = Colors.red.shade600;
-        iconBgColor = Colors.red.shade50;
+        icon = LucideIcons.alertTriangle;
+        iconColor = AppColors.error;
+        iconBgColor = AppColors.error.withValues(alpha: 0.1);
         break;
       case SayfoodsModalType.warning:
-        icon = Icons.warning_amber_rounded;
-        iconColor = Colors.orange.shade600;
-        iconBgColor = Colors.orange.shade50;
+        icon = LucideIcons.alertCircle;
+        iconColor = AppColors.warning;
+        iconBgColor = AppColors.warning.withValues(alpha: 0.1);
         break;
       case SayfoodsModalType.info:
-        icon = Icons.info_outline_rounded;
-        iconColor = theme.colorScheme.primary;
-        iconBgColor = theme.colorScheme.primaryContainer.withOpacity(0.4);
+        icon = LucideIcons.info;
+        iconColor = AppColors.primary;
+        iconBgColor = AppColors.primary.withValues(alpha: 0.1);
         break;
       case SayfoodsModalType.custom:
-        icon = customIcon ?? Icons.star_border_rounded;
-        iconColor = customIconColor ?? theme.colorScheme.primary;
-        iconBgColor = iconColor.withOpacity(0.1);
+        icon = customIcon ?? LucideIcons.star;
+        iconColor = customIconColor ?? AppColors.primary;
+        iconBgColor = iconColor.withValues(alpha: 0.1);
         break;
     }
 
@@ -188,11 +190,12 @@ class _ModalBody extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 32,
             offset: const Offset(0, 12),
           ),
@@ -228,7 +231,7 @@ class _ModalBody extends StatelessWidget {
             textAlign: TextAlign.center,
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w800,
-              color: Colors.black87,
+              color: AppColors.textPrimary,
               letterSpacing: -0.5,
             ),
           ),
@@ -240,7 +243,7 @@ class _ModalBody extends StatelessWidget {
               subtitle!,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.black54,
+                color: AppColors.textSecondary,
                 height: 1.5,
               ),
             ),
@@ -266,13 +269,13 @@ class _ModalBody extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                      side: const BorderSide(color: AppColors.border, width: 1.5),
                     ),
                     child: Text(
                       secondaryButtonText!,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: Colors.black87,
+                        color: AppColors.textPrimary,
                         fontSize: 15,
                       ),
                     ),

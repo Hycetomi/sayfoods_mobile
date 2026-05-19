@@ -1,17 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:sayfoods_app/src/features/rider/application/rider_location_service.dart';
 
-final riderDutyProvider = StateNotifierProvider<RiderDutyNotifier, AsyncValue<bool>>((ref) {
-  return RiderDutyNotifier();
+final riderDutyProvider =
+    StateNotifierProvider<RiderDutyNotifier, AsyncValue<bool>>((ref) {
+  return RiderDutyNotifier(ref.watch(riderLocationServiceProvider));
 });
 
 class RiderDutyNotifier extends StateNotifier<AsyncValue<bool>> {
-  RiderDutyNotifier() : super(const AsyncValue.loading()) {
+  RiderDutyNotifier(this._locationService) : super(const AsyncValue.loading()) {
     _initDutyStatus();
   }
 
   final _supabase = Supabase.instance.client;
+  final RiderLocationService _locationService;
 
   Future<void> _initDutyStatus() async {
     try {
@@ -28,9 +31,10 @@ class RiderDutyNotifier extends StateNotifier<AsyncValue<bool>> {
           .maybeSingle();
 
       final isOnline = data?['duty_status'] as bool? ?? false;
+      // Resume GPS broadcast if rider was already online
+      if (isOnline) await _locationService.start(userId: user.id);
       state = AsyncValue.data(isOnline);
-    } catch (e, st) {
-      // Default to offline if we can't read the profile (missing column, RLS, etc.)
+    } catch (e) {
       state = const AsyncValue.data(false);
     }
   }
@@ -41,7 +45,7 @@ class RiderDutyNotifier extends StateNotifier<AsyncValue<bool>> {
       if (user == null) throw Exception("User not logged in");
 
       if (newStatus) {
-        // Going online - validate shift
+        // Validate shift before going online
         final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
         final scheduleData = await _supabase
             .from('rider_schedules')
@@ -52,15 +56,23 @@ class RiderDutyNotifier extends StateNotifier<AsyncValue<bool>> {
             .maybeSingle();
 
         if (scheduleData == null) {
-          throw Exception("You are not scheduled for a shift today. Please contact dispatch.");
+          throw Exception(
+              "You are not scheduled for a shift today. Please contact dispatch.");
         }
-      }
 
-      // Update duty status
-      await _supabase
-          .from('profiles')
-          .update({'duty_status': newStatus})
-          .eq('id', user.id);
+        await _supabase
+            .from('profiles')
+            .update({'duty_status': true})
+            .eq('id', user.id);
+
+        await _locationService.start(userId: user.id);
+      } else {
+        _locationService.stop();
+        await _supabase
+            .from('profiles')
+            .update({'duty_status': false})
+            .eq('id', user.id);
+      }
 
       state = AsyncValue.data(newStatus);
     } catch (e) {

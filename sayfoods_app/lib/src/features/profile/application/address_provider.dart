@@ -28,8 +28,10 @@ class AddressNotifier extends AsyncNotifier<List<AddressModel>> {
   Future<void> addAddress({
     required String street,
     required String zoneId,
-    String label = 'Home', // Defaulting to 'Home'
-    String city = 'Lagos', // Defaulting to 'Lagos' based on your UI
+    String label = 'Home',
+    String city = 'Lagos',
+    double? latitude,
+    double? longitude,
   }) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not logged in');
@@ -40,10 +42,12 @@ class AddressNotifier extends AsyncNotifier<List<AddressModel>> {
       await _supabase.from('user_addresses').insert({
         'user_id': userId,
         'street_address': street,
-        'zone_id': zoneId, // Matches your schema
+        'zone_id': zoneId,
         'label': label,
         'city': city,
-        'is_default': false, // Can be updated later if needed
+        'is_default': false,
+        'latitude': latitude,
+        'longitude': longitude,
       });
 
       state = await AsyncValue.guard(() => _fetchAddresses());

@@ -41,20 +41,24 @@ final chatMessagesProvider =
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('rider_id', params.riderId!)
-        .order('created_at');
+        .order('created_at', ascending: true);
   } else {
     assert(params.orderId != null, 'orderId required for $params.channelType channel');
     raw = supabase
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('order_id', params.orderId!)
-        .order('created_at');
+        .order('created_at', ascending: true);
   }
 
-  return raw.map((data) => data
-      .map(MessageModel.fromJson)
-      .where((m) => m.channelType == params.channelType)
-      .toList());
+  return raw.map((data) {
+    final msgs = data
+        .map(MessageModel.fromJson)
+        .where((m) => m.channelType == params.channelType)
+        .toList();
+    msgs.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return msgs;
+  });
 });
 
 // ── Send Message ─────────────────────────────────────────────────────────────
@@ -84,6 +88,15 @@ class ChatNotifier extends StateNotifier<AsyncValue<void>> {
       });
       state = const AsyncValue.data(null);
     } catch (e, st) {
+      if (e is PostgrestException) {
+        debugPrint('[CHAT] ❌ PostgrestException inserting message:'
+            '\n  code:    ${e.code}'
+            '\n  message: ${e.message}'
+            '\n  details: ${e.details}'
+            '\n  hint:    ${e.hint}');
+      } else {
+        debugPrint('[CHAT] ❌ Unexpected error inserting message: $e\n$st');
+      }
       state = AsyncValue.error(e, st);
       rethrow;
     }

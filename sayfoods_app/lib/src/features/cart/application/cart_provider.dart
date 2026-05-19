@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sayfoods_app/src/features/orders/domain/order_model.dart';
 import 'package:sayfoods_app/src/features/products/domain/product_model.dart';
 
 // --- 1. The Cart Item Model ---
@@ -78,6 +79,15 @@ class CartNotifier extends Notifier<List<CartItem>> {
 
   void clearCart() {
     state = [];
+  }
+
+  // Adds all items from a past order back into the cart (Re-order flow).
+  void addItemsFromOrder(List<OrderItemModel> items) {
+    for (final item in items) {
+      if (item.product != null) {
+        addItem(item.product!, item.quantity);
+      }
+    }
   }
 }
 

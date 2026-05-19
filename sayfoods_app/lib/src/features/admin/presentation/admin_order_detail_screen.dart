@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:sayfoods_app/src/features/chat/application/chat_provider.dart';
+import 'package:sayfoods_app/src/shared/utils/page_transitions.dart';
 import 'package:sayfoods_app/src/features/chat/presentation/chat_screen.dart';
 import 'package:sayfoods_app/src/features/orders/domain/order_model.dart';
+import 'package:sayfoods_app/src/features/admin/application/admin_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 // ── Provider: fetch full riders list (profiles with role = 'rider') ──────────
 final ridersListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
@@ -170,7 +173,7 @@ class _AdminOrderDetailScreenState
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     }
@@ -195,7 +198,7 @@ class _AdminOrderDetailScreenState
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     }
@@ -278,7 +281,11 @@ class _AdminOrderDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final order = widget.order;
+    final liveOrderAsync = ref.watch(singleOrderProvider(widget.order.id));
+    final order = liveOrderAsync.maybeWhen(
+      data: (o) => o ?? widget.order,
+      orElse: () => widget.order,
+    );
     final fmt = NumberFormat.currency(symbol: '₦', decimalDigits: 2);
     final ridersAsync = ref.watch(ridersListProvider);
     final isSaving =
@@ -313,7 +320,7 @@ class _AdminOrderDetailScreenState
               ),
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(
+                FadeSlideRoute(
                   builder: (_) => ChatScreen(
                     params: ChatChannelParams(
                       channelType: 'admin_client',

@@ -6,6 +6,7 @@ import 'package:sayfoods_app/src/features/admin/domain/order_goal_model.dart';
 import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
 import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 class OrderGoalsScreen extends ConsumerStatefulWidget {
   const OrderGoalsScreen({super.key});
@@ -47,7 +48,7 @@ class _OrderGoalsScreenState extends ConsumerState<OrderGoalsScreen> {
               context: context,
               type: SayfoodsModalType.error,
               title: 'Error',
-              subtitle: e.toString(),
+              subtitle: ErrorHelper.getErrorMessage(e),
             );
           }
         }
@@ -87,7 +88,7 @@ class _OrderGoalsScreenState extends ConsumerState<OrderGoalsScreen> {
               context: context,
               type: SayfoodsModalType.error,
               title: 'Error',
-              subtitle: e.toString(),
+              subtitle: ErrorHelper.getErrorMessage(e),
             );
           }
         }

@@ -47,6 +47,8 @@ class OrderModel {
   final DateTime createdAt;
   final DateTime? completedAt;
   final double commissionEarned;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   final List<OrderItemModel> items;
 
   OrderModel({
@@ -64,6 +66,8 @@ class OrderModel {
     required this.createdAt,
     this.completedAt,
     this.commissionEarned = 0.0,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
     required this.items,
   });
 
@@ -107,6 +111,8 @@ class OrderModel {
           ? DateTime.parse(json['completed_at'].toString()).toLocal()
           : null,
       commissionEarned: (json['commission_earned'] as num?)?.toDouble() ?? 0.0,
+      deliveryLatitude: (json['delivery_latitude'] as num?)?.toDouble(),
+      deliveryLongitude: (json['delivery_longitude'] as num?)?.toDouble(),
       items: mappedItems,
     );
   }

@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sayfoods_app/src/features/cart/application/cart_provider.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
-import 'package:paystack_flutter_sdk/paystack_flutter_sdk.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Need this to get the user's email
-import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -13,10 +11,13 @@ import 'package:sayfoods_app/src/features/profile/application/address_provider.d
 import 'package:sayfoods_app/src/features/profile/application/delivery_zone_provider.dart';
 import 'package:sayfoods_app/src/features/profile/domain/address_model.dart';
 import 'package:sayfoods_app/src/features/profile/presentation/profile_screen.dart';
+import 'package:sayfoods_app/src/features/cart/presentation/paystack_webview.dart';
 
 import 'package:sayfoods_app/src/features/cart/presentation/widgets/cart_item_card.dart';
 import 'package:sayfoods_app/src/features/cart/presentation/widgets/cart_summary_row.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sayfoods_app/src/shared/theme/app_colors.dart';
 
 // 1. Upgraded to a Stateful Consumer Widget to hold the selected address state
 class CartScreen extends ConsumerStatefulWidget {
@@ -27,33 +28,10 @@ class CartScreen extends ConsumerStatefulWidget {
 }
 
 class _CartScreenState extends ConsumerState<CartScreen> {
-  final Color _primaryPurple = const Color(0xFF5A189A);
+  final Color _primaryPurple = AppColors.primary;
 
-  // Local state to remember which address they selected for this order
   String? _selectedAddressId;
   bool _isProcessingPayment = false;
-
-  // NEW: Initialize the official SDK
-  final _paystack = Paystack();
-
-  @override
-  void initState() {
-    super.initState();
-    // NEW: The setup is now async, so we just let it run
-    _setupPaystack();
-  }
-
-  Future<void> _setupPaystack() async {
-    try {
-      await _paystack.initialize(
-        'pk_test_5c808e19614b5e5596b4f269b335273d813473dc',
-        true,
-      );
-      print('Paystack Official SDK Initialized!');
-    } catch (e) {
-      print('Failed to initialize Paystack: $e');
-    }
-  }
 
   Future<String?> _saveOrderToSupabase(
     String reference,
@@ -61,8 +39,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     double subTotal,
     double deliveryFee,
     List<CartItem> items,
-    String deliveryAddressText,
-  ) async {
+    String deliveryAddressText, {
+    double? deliveryLat,
+    double? deliveryLng,
+  }) async {
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
     if (user == null) return null;
@@ -75,6 +55,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             'client_id': user.id,
             'status': 'pending',
             'delivery_address': deliveryAddressText,
+            'delivery_latitude': deliveryLat,
+            'delivery_longitude': deliveryLng,
             'subtotal': subTotal,
             'delivery_fee': deliveryFee,
             'total_amount': grandTotal,
@@ -102,22 +84,23 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       await supabase.from('order_items').insert(orderItemsData);
 
       return orderId;
-    } catch (e) {
-      print('Database save error: $e');
+    } catch (e, st) {
+      debugPrint('[CHECKOUT] ❌ _saveOrderToSupabase error: $e\n$st');
       return null;
     }
   }
 
-  Future<String?> _createAccessCode(
+  Future<String?> _createAuthorizationUrl(
     String reference,
     int amountInKobo,
     String email,
     String orderId,
   ) async {
-    // ⚠️ NOTE: We are using the Secret Key here purely for development/testing!
-    // In production, you will want to move this 1 API call to a Supabase Edge Function for security.
+    // ⚠️ NOTE: Secret Key used here for dev/testing only.
+    // Move this call to a Supabase Edge Function before production.
     const String secretKey = 'sk_test_f67c30c4f53e95f01ad02b52546b3a3d449db57b';
 
+    debugPrint('[CHECKOUT] 🌐 Calling Paystack /transaction/initialize — ref: $reference  amount: ${amountInKobo}kobo  orderId: $orderId');
     try {
       final response = await http.post(
         Uri.parse('https://api.paystack.co/transaction/initialize'),
@@ -129,20 +112,75 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           'email': email,
           'amount': amountInKobo,
           'reference': reference,
+          'callback_url': 'https://sayfoods.app/checkout/success',
           'metadata': {'order_id': orderId},
         }),
       );
 
+      debugPrint('[CHECKOUT] 🌐 Paystack API status: ${response.statusCode}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['data']['access_code']; // We got the code!
+        final url = data['data']['authorization_url'] as String?;
+        debugPrint('[CHECKOUT] ✅ Authorization URL received: $url');
+        return url;
       } else {
-        print('Paystack API Error: ${response.body}');
+        debugPrint('[CHECKOUT] ❌ Paystack API error body: ${response.body}');
         return null;
       }
-    } catch (e) {
-      print('HTTP Request failed: $e');
+    } catch (e, st) {
+      debugPrint('[CHECKOUT] ❌ HTTP request failed: $e\n$st');
       return null;
+    }
+  }
+
+  Future<void> _verifyPaymentWithServer(String reference, String orderId) async {
+    const secretKey = 'sk_test_f67c30c4f53e95f01ad02b52546b3a3d449db57b';
+
+    // Step A — try the shared Supabase edge function first
+    debugPrint('[CHECKOUT] 🔍 [A] Calling paystack-verify edge function — ref: $reference  orderId: $orderId');
+    try {
+      final edgeResponse = await Supabase.instance.client.functions.invoke(
+        'paystack-verify',
+        body: {'reference': reference},
+      );
+      debugPrint('[CHECKOUT] 🔍 [A] Edge function raw response: ${edgeResponse.data}');
+      final data = edgeResponse.data;
+      if (data is Map && data['status'] == 'success') {
+        debugPrint('[CHECKOUT] ✅ [A] Edge function verified & updated DB');
+        return;
+      }
+      debugPrint('[CHECKOUT] ⚠️  [A] Edge function returned non-success status — falling through to direct verify');
+    } catch (e, st) {
+      debugPrint('[CHECKOUT] ⚠️  [A] Edge function threw: $e\n$st — falling through to direct verify');
+    }
+
+    // Step B — direct Paystack verify + Supabase update as fallback
+    debugPrint('[CHECKOUT] 🔍 [B] Direct Paystack verify — ref: $reference');
+    try {
+      final verifyRes = await http.get(
+        Uri.parse('https://api.paystack.co/transaction/verify/$reference'),
+        headers: {'Authorization': 'Bearer $secretKey'},
+      );
+      debugPrint('[CHECKOUT] 🔍 [B] Paystack verify HTTP status: ${verifyRes.statusCode}');
+      if (verifyRes.statusCode == 200) {
+        final body = jsonDecode(verifyRes.body) as Map<String, dynamic>;
+        final paystackStatus = (body['data'] as Map?)?['status'] as String?;
+        debugPrint('[CHECKOUT] 🔍 [B] Paystack transaction status: $paystackStatus');
+        if (paystackStatus == 'success') {
+          final updateRes = await Supabase.instance.client
+              .from('orders')
+              .update({'payment_status': 'paid', 'status': 'accepted'})
+              .eq('id', orderId)
+              .select();
+          debugPrint('[CHECKOUT] ✅ [B] Supabase updated — rows affected: ${(updateRes as List).length}');
+        } else {
+          debugPrint('[CHECKOUT] ⚠️  [B] Paystack says payment not successful: $paystackStatus');
+        }
+      } else {
+        debugPrint('[CHECKOUT] ❌ [B] Paystack verify HTTP error: ${verifyRes.body}');
+      }
+    } catch (e, st) {
+      debugPrint('[CHECKOUT] ❌ [B] Direct verify failed: $e\n$st');
     }
   }
 
@@ -151,9 +189,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     double subTotal,
     double deliveryFee,
     List<CartItem> cartItems,
-    String deliveryAddressText,
-  ) async {
+    String deliveryAddressText, {
+    double? deliveryLat,
+    double? deliveryLng,
+  }) async {
     if (_isProcessingPayment) return;
+
+    debugPrint('[CHECKOUT] ▶️  _processPayment started — grandTotal: $grandTotal  subTotal: $subTotal  deliveryFee: $deliveryFee');
     setState(() => _isProcessingPayment = true);
 
     try {
@@ -161,27 +203,36 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       final user = supabase.auth.currentUser;
 
       if (user == null || user.email == null) {
-        SayfoodsModal.show(
-          context: context,
-          type: SayfoodsModalType.warning,
-          title: 'Login Required',
-          subtitle: 'Please log in to checkout.',
-        );
+        debugPrint('[CHECKOUT] ⚠️  No authenticated user found');
+        if (mounted) {
+          SayfoodsModal.show(
+            context: context,
+            type: SayfoodsModalType.warning,
+            title: 'Login Required',
+            subtitle: 'Please log in to checkout.',
+          );
+        }
         return;
       }
 
+      debugPrint('[CHECKOUT] 👤 User: ${user.id}  email: ${user.email}');
       final amountInKobo = (grandTotal * 100).toInt();
-      String reference = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
+      final reference = 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
+      debugPrint('[CHECKOUT] 💰 amountInKobo: $amountInKobo  reference: $reference');
 
-      // 1. Pre-save the Pending Order!
-      String? orderId = await _saveOrderToSupabase(
+      // Step 1 — persist pending order to Supabase
+      debugPrint('[CHECKOUT] 📝 Step 1: saving order to Supabase...');
+      final orderId = await _saveOrderToSupabase(
         reference,
         grandTotal,
         subTotal,
         deliveryFee,
         cartItems,
         deliveryAddressText,
+        deliveryLat: deliveryLat,
+        deliveryLng: deliveryLng,
       );
+      debugPrint('[CHECKOUT] 📝 Step 1 result — orderId: $orderId');
 
       if (orderId == null) {
         if (mounted) {
@@ -195,15 +246,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         return;
       }
 
-      // 2. Fetch Access Code with Metadata attached
-      String? accessCode = await _createAccessCode(
+      // Step 2 — fetch Paystack authorization URL
+      debugPrint('[CHECKOUT] 🔑 Step 2: fetching Paystack authorization URL...');
+      final authUrl = await _createAuthorizationUrl(
         reference,
         amountInKobo,
         user.email!,
         orderId,
       );
+      debugPrint('[CHECKOUT] 🔑 Step 2 result — authUrl: $authUrl');
 
-      if (accessCode == null) {
+      if (authUrl == null) {
         if (mounted) {
           SayfoodsModal.show(
             context: context,
@@ -215,43 +268,55 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         return;
       }
 
-      // 3. Launch Paystack Checkout UI
-      final response = await _paystack.launch(accessCode);
+      // Step 3 — open Paystack checkout in WebView (pure Dart, no native SDK)
+      debugPrint('[CHECKOUT] 🚀 Step 3: opening PaystackWebView...');
+      if (!mounted) return;
 
-      if (response.status == "success") {
-        print('Payment local success! Reference: ${response.reference}');
+      final result = await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(
+          builder: (_) => PaystackWebView(
+            authorizationUrl: authUrl,
+            reference: reference,
+          ),
+        ),
+      );
 
-        // 4. Handle Success State
-        if (mounted) {
-          ref.read(cartProvider.notifier).clearCart();
+      debugPrint('[CHECKOUT] 🚀 Step 3 result — $result');
 
-          SayfoodsModal.show(
-            context: context,
-            type: SayfoodsModalType.success,
-            title: 'Success!',
-            subtitle: 'Payment Successful! Order submitted.',
-          );
+      if (!mounted) return;
 
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
+      final status = result?['status'] as String? ?? 'cancelled';
+
+      if (status == 'success') {
+        debugPrint('[CHECKOUT] ✅ Payment successful! reference: $reference');
+        // Verify with server — updates payment_status → 'paid' and status → 'accepted'
+        await _verifyPaymentWithServer(reference, orderId);
+        if (!mounted) return;
+        ref.read(cartProvider.notifier).clearCart();
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Success!',
+          subtitle: 'Payment Successful! Order submitted.',
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
-        if (mounted) {
-          SayfoodsModal.show(
-            context: context,
-            type: SayfoodsModalType.error,
-            title: 'Payment Failed',
-            subtitle: response.message,
-          );
-        }
+        debugPrint('[CHECKOUT] ⚠️  Payment not completed — status: $status');
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.warning,
+          title: 'Payment Cancelled',
+          subtitle: 'Your payment was not completed. Your order has been saved — tap Place Order to try again.',
+        );
       }
-    } catch (e) {
-      print('Paystack Launch Error: $e');
+    } catch (e, st) {
+      debugPrint('[CHECKOUT] 💥 CRASH in _processPayment: $e\n$st');
       if (mounted) {
         SayfoodsModal.show(
           context: context,
           type: SayfoodsModalType.error,
           title: 'Checkout Error',
-          subtitle: 'An error occurred during checkout.',
+          subtitle: 'An error occurred during checkout. See logs for details.',
         );
       }
     } finally {
@@ -293,7 +358,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
               return ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.location_on, color: Colors.red),
+                leading: const Icon(LucideIcons.mapPin, color: AppColors.error),
                 title: Text(
                   '${address.label != null ? '${address.label}: ' : ''}${address.street}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
@@ -303,7 +368,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     _selectedAddressId == address.id ||
                         (_selectedAddressId == null &&
                             address.id == addresses.first.id)
-                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    ? const Icon(LucideIcons.checkCircle, color: AppColors.success)
                     : null,
                 onTap: () {
                   // Update the state and recalculate the cart!
@@ -323,10 +388,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
               },
-              icon: const Icon(Icons.add, color: Colors.black87),
+              icon: const Icon(LucideIcons.plus, color: AppColors.textPrimary),
               label: const Text(
                 'Add a new address',
-                style: TextStyle(color: Colors.black87),
+                style: TextStyle(color: AppColors.textPrimary),
               ),
             ),
           ],
@@ -372,16 +437,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final grandTotal = subTotal > 0 ? subTotal + deliveryFee : 0.0;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: SayfoodsAppBar(
         showBackButton: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
+            icon: const Icon(LucideIcons.search, color: AppColors.textPrimary),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.person_outline, color: Colors.white),
+            icon: const Icon(LucideIcons.user, color: AppColors.textPrimary),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => const ProfileScreen()),
@@ -396,7 +461,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ? null
           : Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              color: Colors.white,
+              color: AppColors.surface,
               child: SafeArea(
                 child: SizedBox(
                   height: 60,
@@ -434,6 +499,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               deliveryFee,
                               cartItems,
                               addressText,
+                              deliveryLat: activeAddress.latitude,
+                              deliveryLng: activeAddress.longitude,
                             );
                           },
                     child: _isProcessingPayment
@@ -476,19 +543,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.shopping_cart_outlined,
+                    LucideIcons.shoppingCart,
                     size: 80,
-                    color: Colors.grey.shade300,
+                    color: AppColors.textDisabled,
                   ),
                   const SizedBox(height: 16),
                   const Text(
                     'Your Cart is Empty',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Looks like you haven\'t added anything yet.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
@@ -522,7 +589,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 children: [
                   const Text(
                     'CHECKOUT',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 24),
 
@@ -552,8 +619,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             const Row(
                               children: [
                                 Icon(
-                                  Icons.location_on,
-                                  color: Colors.red,
+                                  LucideIcons.mapPin,
+                                  color: AppColors.error,
                                   size: 20,
                                 ),
                                 SizedBox(width: 8),
@@ -561,6 +628,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                   'ADDRESS',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
                                     fontSize: 16,
                                   ),
                                 ),
@@ -598,8 +666,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ),
                       IconButton(
                         icon: const Icon(
-                          Icons.edit_square,
-                          color: Colors.black,
+                          LucideIcons.edit3,
+                          color: AppColors.textPrimary,
                         ),
                         onPressed: () {
                           // Open the address selector!
@@ -627,6 +695,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         'TOTAL',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                           fontSize: 16,
                         ),
                       ),
@@ -634,6 +703,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         '₦${grandTotal.toStringAsFixed(0)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
                           fontSize: 16,
                         ),
                       ),

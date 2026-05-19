@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/widgets/fleet_map_widget.dart';
 import 'package:sayfoods_app/src/features/chat/application/chat_provider.dart';
 import 'package:sayfoods_app/src/features/chat/presentation/chat_screen.dart';
+import 'package:sayfoods_app/src/shared/utils/page_transitions.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
 
 final _ridersWithStatusProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final response = await Supabase.instance.client
+    StreamProvider<List<Map<String, dynamic>>>((ref) {
+  return Supabase.instance.client
       .from('profiles')
-      .select('id, full_name, duty_status')
+      .stream(primaryKey: ['id'])
       .eq('role', 'rider')
-      .order('full_name');
-  return List<Map<String, dynamic>>.from(response as List);
+      .order('full_name')
+      .map((data) => List<Map<String, dynamic>>.from(data));
 });
 
 class AdminRidersHubScreen extends ConsumerWidget {
@@ -30,7 +32,14 @@ class AdminRidersHubScreen extends ConsumerWidget {
         title: 'Riders',
         showBackButton: false,
       ),
-      body: ridersAsync.when(
+      body: Column(
+        children: [
+          // Fleet map — live pins for all online riders
+          const FleetMapWidget(),
+
+          // Rider list
+          Expanded(
+            child: ridersAsync.when(
         data: (riders) {
           if (riders.isEmpty) {
             return Center(
@@ -141,7 +150,7 @@ class AdminRidersHubScreen extends ConsumerWidget {
                       ),
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        FadeSlideRoute(
                           builder: (_) => ChatScreen(
                             params: ChatChannelParams(
                               channelType: 'admin_rider',
@@ -163,6 +172,9 @@ class AdminRidersHubScreen extends ConsumerWidget {
         error: (err, _) => Center(
             child: Text('Error: $err',
                 style: const TextStyle(color: Colors.red))),
+      ),
+          ),
+        ],
       ),
     );
   }

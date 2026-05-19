@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'src/features/auth/auth_gate.dart';
+import 'src/shared/theme/app_theme.dart';
 
 Future<void> main() async {
   // Ensure Flutter bindings are ready before initializing
@@ -12,6 +14,9 @@ Future<void> main() async {
 
   // Load environment variables from .env.local
   await dotenv.load(fileName: '.env.local');
+
+  // Initialise Mapbox with the public access token before runApp
+  MapboxOptions.setAccessToken(dotenv.env['MAPBOX_ACCESS_TOKEN'] ?? '');
 
   // Initialize Supabase using values from .env.local
   await Supabase.initialize(
@@ -32,23 +37,7 @@ class SayfoodsApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'Sayfoods',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5B1380),
-          primary: const Color(0xFF5B1380), // Enforce the exact brand color
-        ),
-        useMaterial3: true,
-        // Default text styling with Montserrat
-        textTheme: GoogleFonts.montserratTextTheme(textTheme).copyWith(
-          // Specific overrides for Bricolage Grotesque where needed.
-          displayLarge: GoogleFonts.bricolageGrotesque(
-            textStyle: textTheme.displayLarge,
-          ),
-          titleLarge: GoogleFonts.bricolageGrotesque(
-            textStyle: textTheme.titleLarge,
-          ),
-        ),
-      ),
+      theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       // The AuthGate decides which screen to show first
       home: const AuthGate(),

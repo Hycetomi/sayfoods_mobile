@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sayfoods_app/src/features/admin/application/ads_provider.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 class ManageAdsScreen extends ConsumerStatefulWidget {
   const ManageAdsScreen({super.key});
@@ -51,7 +52,7 @@ class _ManageAdsScreenState extends ConsumerState<ManageAdsScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Upload Failed',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     } finally {
@@ -64,49 +65,46 @@ class _ManageAdsScreenState extends ConsumerState<ManageAdsScreen> {
   }
 
   Future<void> _deleteMedia(BannerMedia media) async {
-    // Show confirmation first
-    showDialog(
+    bool confirmed = false;
+    await SayfoodsModal.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Media?'),
-        content: const Text('Are you sure you want to remove this banner?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await Supabase.instance.client.storage
-                    .from('banners')
-                    .remove([media.name]);
-                if (mounted) {
-                  SayfoodsModal.show(
-                    context: context,
-                    type: SayfoodsModalType.success,
-                    title: 'Deleted',
-                    subtitle: 'Banner removed successfully.',
-                  );
-                  ref.invalidate(adsListProvider);
-                }
-              } catch (e) {
-                if (mounted) {
-                  SayfoodsModal.show(
-                    context: context,
-                    type: SayfoodsModalType.error,
-                    title: 'Error',
-                    subtitle: 'Could not delete: $e',
-                  );
-                }
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      type: SayfoodsModalType.warning,
+      title: 'Delete Banner',
+      subtitle: 'Are you sure you want to remove this banner?',
+      primaryButtonText: 'Delete',
+      onPrimaryPressed: () {
+        confirmed = true;
+        Navigator.pop(context);
+      },
+      secondaryButtonText: 'Cancel',
+      onSecondaryPressed: () => Navigator.pop(context),
     );
+
+    if (!confirmed) return;
+
+    try {
+      await Supabase.instance.client.storage
+          .from('banners')
+          .remove([media.name]);
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.success,
+          title: 'Deleted',
+          subtitle: 'Banner removed successfully.',
+        );
+        ref.invalidate(adsListProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        SayfoodsModal.show(
+          context: context,
+          type: SayfoodsModalType.error,
+          title: 'Error',
+          subtitle: 'Could not delete: $e',
+        );
+      }
+    }
   }
 
   @override

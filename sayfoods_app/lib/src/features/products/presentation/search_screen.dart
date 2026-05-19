@@ -92,12 +92,13 @@ class SearchScreen extends ConsumerWidget {
                     itemBuilder: (context, index) {
                       final product = products[index];
                       return ProductCard(
+                        productId: product.id,
                         title: product.name,
                         description: product.description,
                         price: '₦${product.price.toStringAsFixed(0)}',
                         rating: product.rating,
-                        imagePath: product.imageUrl.isNotEmpty 
-                            ? product.imageUrl 
+                        imagePath: product.imageUrl.isNotEmpty
+                            ? product.imageUrl
                             : 'assets/images/meat.png',
                         onTap: () {
                           Navigator.of(context).push(

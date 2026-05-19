@@ -6,6 +6,9 @@ import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
 import 'package:sayfoods_app/src/features/admin/application/system_settings_provider.dart';
 import 'package:sayfoods_app/src/features/rider/application/live_order_stream_provider.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sayfoods_app/src/shared/theme/app_colors.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 class RiderHomeScreen extends ConsumerWidget {
   const RiderHomeScreen({super.key});
@@ -21,38 +24,30 @@ class RiderHomeScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       appBar: SayfoodsAppBar(
         title: 'Dispatch Pool',
         showBackButton: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            icon: const Icon(LucideIcons.logOut, color: AppColors.textPrimary),
             tooltip: 'Sign Out',
             onPressed: () async {
-              final confirmed = await showDialog<bool>(
+              bool confirmed = false;
+              await SayfoodsModal.show(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  title: const Text('Sign Out',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  content:
-                      const Text('Are you sure you want to sign out?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Sign Out',
-                          style: TextStyle(color: Colors.red)),
-                    ),
-                  ],
-                ),
+                type: SayfoodsModalType.warning,
+                title: 'Sign Out',
+                subtitle: 'Are you sure you want to sign out?',
+                primaryButtonText: 'Sign Out',
+                onPrimaryPressed: () {
+                  confirmed = true;
+                  Navigator.pop(context);
+                },
+                secondaryButtonText: 'Cancel',
+                onSecondaryPressed: () => Navigator.pop(context),
               );
-              if (confirmed == true) {
+              if (confirmed) {
                 await Supabase.instance.client.auth.signOut();
               }
             },
@@ -65,14 +60,10 @@ class RiderHomeScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(24.0),
             decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+              color: AppColors.surface,
+              border: const Border(
+                bottom: BorderSide(color: AppColors.border, width: 1),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -81,13 +72,14 @@ class RiderHomeScreen extends ConsumerWidget {
                   'Duty Status',
                   style: TextStyle(
                     fontSize: 18,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 dutyState.when(
                   data: (isOnline) => Switch(
                     value: isOnline,
-                    activeColor: Colors.green,
+                    activeColor: AppColors.success,
                     onChanged: (val) async {
                       try {
                         await ref.read(riderDutyProvider.notifier).toggleDutyStatus(val);
@@ -103,8 +95,8 @@ class RiderHomeScreen extends ConsumerWidget {
                       }
                     },
                   ),
-                  loading: () => const CircularProgressIndicator(),
-                  error: (err, _) => const Icon(Icons.error, color: Colors.red),
+                  loading: () => const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+                  error: (err, _) => const Icon(LucideIcons.alertTriangle, color: AppColors.error),
                 ),
               ],
             ),
@@ -118,7 +110,7 @@ class RiderHomeScreen extends ConsumerWidget {
                   return const Center(
                     child: Text(
                       'Go Online to view the dispatch pool.',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                     ),
                   );
                 }
@@ -129,7 +121,7 @@ class RiderHomeScreen extends ConsumerWidget {
                       return const Center(
                         child: Text(
                           'No orders ready for pickup.',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                         ),
                       );
                     }
@@ -143,8 +135,12 @@ class RiderHomeScreen extends ConsumerWidget {
                         
                         return Card(
                           margin: const EdgeInsets.only(bottom: 16),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                          color: AppColors.surface,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(color: AppColors.border),
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
@@ -155,25 +151,25 @@ class RiderHomeScreen extends ConsumerWidget {
                                   children: [
                                     Text(
                                       'Order #${order.id.substring(0, 8)}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
                                     ),
                                     Text(
                                       'Est. Earn: ₦${commission.toStringAsFixed(0)}',
                                       style: const TextStyle(
-                                        color: Colors.green,
+                                        color: AppColors.success,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text('Drop-off: ${order.deliveryAddress}', style: const TextStyle(fontSize: 14)),
+                                Text('Drop-off: ${order.deliveryAddress}', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                                 const SizedBox(height: 16),
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
+                                      backgroundColor: AppColors.primary,
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                     ),
                                     onPressed: () async {
@@ -184,7 +180,7 @@ class RiderHomeScreen extends ConsumerWidget {
                                         
                                         await supabase.from('orders').update({
                                           'rider_id': user.id,
-                                          'status': 'delivering'
+                                          'status': 'out_for_delivery'
                                         }).eq('id', order.id);
                                         
                                         if (context.mounted) {
@@ -201,7 +197,7 @@ class RiderHomeScreen extends ConsumerWidget {
                                             context: context,
                                             type: SayfoodsModalType.error,
                                             title: 'Failed to Accept Order',
-                                            subtitle: e.toString(),
+                                            subtitle: ErrorHelper.getErrorMessage(e),
                                           );
                                         }
                                       }
@@ -216,8 +212,8 @@ class RiderHomeScreen extends ConsumerWidget {
                       },
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (err, _) => Center(child: Text('Error: $err')),
+                  loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.error))),
                 );
               },
               orElse: () => const SizedBox.shrink(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sayfoods_app/src/features/orders/domain/order_model.dart';
+import 'package:sayfoods_app/src/features/orders/presentation/widgets/live_delivery_map.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
 
 class OngoingTimelineScreen extends StatelessWidget {
@@ -11,17 +12,20 @@ class OngoingTimelineScreen extends StatelessWidget {
     switch (dbStatus.toLowerCase()) {
       case 'pending':
         return 1;
-      case 'confirmed':
+      case 'accepted':
         return 2;
-      case 'processing': // or packaging
+      case 'sourcing':
         return 3;
-      case 'pickup':
-      case 'on_way':
+      case 'ready_for_pickup':
         return 4;
-      case 'delivered':
+      case 'out_for_delivery':
+      case 'delivering':
         return 5;
+      case 'delivered':
+      case 'completed':
+        return 6;
       default:
-        return 0; // unknown state
+        return 0;
     }
   }
 
@@ -37,61 +41,57 @@ class OngoingTimelineScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
           children: [
+            // Live map — shown as soon as a rider is assigned, stays until
+            // the order is completed or cancelled.
+            if (order.riderId != null &&
+                order.status != 'pending' &&
+                order.status != 'completed' &&
+                order.status != 'cancelled') ...[
+              LiveDeliveryMap(order: order),
+              const SizedBox(height: 24),
+            ],
+
             // Timeline items
             _TimelineTile(
               time: timeStr,
               title: 'ORDER PLACED',
-              subtitle: 'Your Order ${order.id.substring(0, 6)} has been placed',
-              isCompleted: rank >= 0, // Always true if it exists
-              isLast: false,
-            ),
-            _TimelineTile(
-              time: timeStr,
-              title: 'PENDING',
-              subtitle: 'Your Order ${order.id.substring(0, 6)} is currently waiting approval',
+              subtitle: 'Your order has been received',
               isCompleted: rank >= 1,
               isLast: false,
             ),
             _TimelineTile(
               time: timeStr,
-              title: 'ORDER CONFIRMED',
-              subtitle: 'Your Order ${order.id.substring(0, 6)} has been approved by a Sayfoods personnel',
+              title: 'ACCEPTED',
+              subtitle: 'Your order has been confirmed and payment verified',
               isCompleted: rank >= 2,
               isLast: false,
             ),
             _TimelineTile(
               time: timeStr,
-              title: 'PROCESSING',
-              subtitle: 'Your Order ${order.id.substring(0, 6)} is being packaged',
+              title: 'SOURCING',
+              subtitle: 'Your items are being prepared',
               isCompleted: rank >= 3,
               isLast: false,
             ),
             _TimelineTile(
               time: timeStr,
-              title: 'RIDER PICKUP',
-              subtitle: 'Rider is waiting to pick up your order',
+              title: 'READY FOR PICKUP',
+              subtitle: 'Order is ready — a rider is on the way',
               isCompleted: rank >= 4,
               isLast: false,
-              actionButton: rank >= 4 
-                ? ElevatedButton(
-                    onPressed: () {
-                      // Navigate to messages
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[300],
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    ),
-                    child: const Text('Message', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  )
-                : null,
+            ),
+            _TimelineTile(
+              time: timeStr,
+              title: 'OUT FOR DELIVERY',
+              subtitle: 'Your rider is heading to you',
+              isCompleted: rank >= 5,
+              isLast: false,
             ),
             _TimelineTile(
               time: timeStr,
               title: 'DELIVERED',
               subtitle: 'Order delivered to your address',
-              isCompleted: rank >= 5,
+              isCompleted: rank >= 6,
               isLast: true,
             ),
           ],
@@ -107,7 +107,6 @@ class _TimelineTile extends StatelessWidget {
   final String subtitle;
   final bool isCompleted;
   final bool isLast;
-  final Widget? actionButton;
 
   const _TimelineTile({
     required this.time,
@@ -115,7 +114,6 @@ class _TimelineTile extends StatelessWidget {
     required this.subtitle,
     required this.isCompleted,
     required this.isLast,
-    this.actionButton,
   });
 
   @override
@@ -205,10 +203,6 @@ class _TimelineTile extends StatelessWidget {
                       height: 1.4,
                     ),
                   ),
-                  if (actionButton != null) ...[
-                    const SizedBox(height: 8),
-                    actionButton!,
-                  ],
                 ],
               ),
             ),

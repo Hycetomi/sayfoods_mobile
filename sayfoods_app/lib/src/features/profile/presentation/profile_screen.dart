@@ -8,8 +8,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:sayfoods_app/src/features/profile/presentation/widgets/profile_detail_row.dart';
 import 'package:sayfoods_app/src/features/profile/presentation/widgets/settings_action_row.dart';
 import 'package:sayfoods_app/src/features/profile/presentation/widgets/add_address_sheet.dart';
-import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
+import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 // --- Providers ---
 import 'package:sayfoods_app/src/features/profile/application/address_provider.dart';
@@ -58,7 +60,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     }
@@ -86,7 +88,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Error',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     }
@@ -136,7 +138,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           context: context,
           type: SayfoodsModalType.error,
           title: 'Upload Failed',
-          subtitle: e.toString(),
+          subtitle: ErrorHelper.getErrorMessage(e),
         );
       }
     }

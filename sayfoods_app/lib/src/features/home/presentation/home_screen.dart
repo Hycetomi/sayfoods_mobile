@@ -1,8 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sayfoods_app/src/shared/utils/page_transitions.dart';
 import 'package:sayfoods_app/src/features/products/presentation/product_details_screen.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_app_bar.dart';
 import 'package:sayfoods_app/src/features/profile/presentation/profile_screen.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:sayfoods_app/src/shared/theme/app_colors.dart';
 // If you are keeping the cart navigation here, you will also need the CartScreen import!
 //import 'package:sayfoods_app/src/features/cart/presentation/cart_screen.dart';
 
@@ -15,8 +19,12 @@ import 'package:sayfoods_app/src/features/home/presentation/widgets/ads_carousel
 // Providers
 import 'package:sayfoods_app/src/features/products/application/product_provider.dart';
 
+import 'package:sayfoods_app/src/features/blog/presentation/blog_list_screen.dart';
 import 'package:sayfoods_app/src/features/chat/presentation/client_messages_screen.dart';
 import 'package:sayfoods_app/src/features/orders/presentation/orders_screen.dart';
+import 'package:sayfoods_app/src/features/notifications/application/notifications_provider.dart';
+import 'package:sayfoods_app/src/features/notifications/presentation/notifications_screen.dart';
+import 'package:sayfoods_app/src/features/products/presentation/favorites_screen.dart';
 import 'package:sayfoods_app/src/features/products/presentation/search_screen.dart';
 
 class ClientHomeScreen extends ConsumerStatefulWidget {
@@ -26,8 +34,26 @@ class ClientHomeScreen extends ConsumerStatefulWidget {
   ConsumerState<ClientHomeScreen> createState() => _ClientHomeScreenState();
 }
 
-class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
+class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen>
+    with TickerProviderStateMixin {
   int _selectedIndex = 0;
+  late final AnimationController _gridController;
+  bool _gridAnimated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gridController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+  }
+
+  @override
+  void dispose() {
+    _gridController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,42 +61,61 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
       _buildHomeView(),
       const OrdersScreen(),
       const ClientMessagesScreen(),
+      const FavoritesScreen(),
     ];
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _selectedIndex,
         children: pages,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.88),
+              border: Border(
+                top: BorderSide(
+                  color: AppColors.border,
+                  width: 0.5,
+                ),
+              ),
             ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) => setState(() => _selectedIndex = index),
-          selectedItemColor: Colors.orange,
-          unselectedItemColor: Colors.black54,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_fire_department),
-              label: 'Orders',
+            child: NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (i) =>
+                  setState(() => _selectedIndex = i),
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              indicatorColor: AppColors.primary.withValues(alpha: 0.1),
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.alwaysShow,
+              animationDuration: const Duration(milliseconds: 300),
+              destinations: const [
+                NavigationDestination(
+                    icon: Icon(LucideIcons.home),
+                    selectedIcon: Icon(LucideIcons.home, color: AppColors.primary),
+                    label: 'Home'),
+                NavigationDestination(
+                    icon: Icon(LucideIcons.shoppingBag),
+                    selectedIcon: Icon(LucideIcons.shoppingBag,
+                        color: AppColors.primary),
+                    label: 'Orders'),
+                NavigationDestination(
+                    icon: Icon(LucideIcons.messageSquare),
+                    selectedIcon:
+                        Icon(LucideIcons.messageSquare, color: AppColors.primary),
+                    label: 'Messages'),
+                NavigationDestination(
+                    icon: Icon(LucideIcons.heart),
+                    selectedIcon: Icon(LucideIcons.heart,
+                        color: AppColors.primary),
+                    label: 'Favourites'),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.message),
-              label: 'Messages',
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -88,24 +133,48 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Very light grey background to make cards pop
+      backgroundColor: AppColors.background, 
       appBar: SayfoodsAppBar(
-        showBackButton: false, // Home screen doesn't need a back button
+        showBackButton: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {
-               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchScreen()));
-            },
+            icon: const Icon(LucideIcons.search, color: AppColors.textPrimary),
+            onPressed: () => Navigator.of(context)
+                .push(FadeSlideRoute(builder: (_) => const SearchScreen())),
           ),
           const CartIconBadge(),
+          // Bell badge — shows red dot when unread notifications exist
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(LucideIcons.bell,
+                    color: AppColors.textPrimary),
+                onPressed: () => Navigator.of(context).push(
+                  FadeSlideRoute(
+                      builder: (_) => const NotificationsScreen()),
+                ),
+              ),
+              if (ref.watch(unreadCountProvider) > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
-            icon: const Icon(Icons.person_outline, color: Colors.white),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
-              );
-            },
+            icon: const Icon(LucideIcons.user, color: AppColors.textPrimary),
+            onPressed: () => Navigator.of(context).push(
+              FadeSlideRoute(builder: (_) => const ProfileScreen()),
+            ),
           ),
         ],
       ),
@@ -162,7 +231,54 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
 
               // 2. Promo Banner
               const AdsCarousel(),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // Blog entry card
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  FadeSlideRoute(
+                      builder: (_) => const BlogListScreen()),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF5B1380), Color(0xFF8B21C0)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.article_rounded,
+                          color: Colors.white, size: 22),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('SayFoods Blog',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14)),
+                            Text('Recipes, tips & fresh ideas',
+                                style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded,
+                          color: Colors.white70, size: 14),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
 
               // 3. Product Grid (Powered by Riverpod!)
               ref
@@ -184,6 +300,13 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                       ),
                     ),
                     data: (products) {
+                      // Trigger stagger once on first load
+                      if (!_gridAnimated && products.isNotEmpty) {
+                        _gridAnimated = true;
+                        WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _gridController.forward(from: 0));
+                      }
+
                       // Empty State
                       if (products.isEmpty) {
                         return const Center(
@@ -215,8 +338,24 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                         itemCount: products.length,
                         itemBuilder: (context, index) {
                           final product = products[index];
+                          final start =
+                              (index * 0.12).clamp(0.0, 0.7);
+                          final end = (start + 0.3).clamp(0.0, 1.0);
+                          final itemAnim = CurvedAnimation(
+                            parent: _gridController,
+                            curve: Interval(start, end,
+                                curve: Curves.easeOutCubic),
+                          );
 
-                          return ProductCard(
+                          return FadeTransition(
+                            opacity: itemAnim,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.15),
+                                end: Offset.zero,
+                              ).animate(itemAnim),
+                              child: ProductCard(
+                            productId: product.id,
                             title: product.name,
                             description: product.description,
                             price: '₦${product.price.toStringAsFixed(0)}',
@@ -225,15 +364,16 @@ class _ClientHomeScreenState extends ConsumerState<ClientHomeScreen> {
                                 ? product.imageUrl
                                 : 'assets/images/meat.png',
                             onTap: () {
-                              // Navigate to the Product Details Screen!
                               Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) =>
+                                FadeSlideRoute(
+                                  builder: (_) =>
                                       ProductDetailsScreen(product: product),
                                 ),
                               );
                             },
-                          );
+                          ),  // ProductCard
+                            ),  // SlideTransition
+                          );   // FadeTransition
                         },
                       );
                     },

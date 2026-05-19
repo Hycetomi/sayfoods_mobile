@@ -8,7 +8,10 @@ import 'package:sayfoods_app/src/features/admin/presentation/manage_users_screen
 import 'package:sayfoods_app/src/features/admin/presentation/edit_admin_profile_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/manage_ads_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/commission_settings_screen.dart';
+import 'package:sayfoods_app/src/features/admin/presentation/manage_delivery_zones_screen.dart';
 import 'package:sayfoods_app/src/features/admin/presentation/manage_rider_schedules_screen.dart';
+import 'package:sayfoods_app/src/features/blog/presentation/admin_blog_screen.dart';
+import 'package:sayfoods_app/src/shared/utils/page_transitions.dart';
 
 class AdminSettingsScreen extends StatelessWidget {
   const AdminSettingsScreen({super.key});
@@ -46,7 +49,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: colorPurple,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ManageProductsScreen()),
+                  FadeSlideRoute(builder: (_) => const ManageProductsScreen()),
                 ),
               ),
               _buildSettingsTile(
@@ -56,7 +59,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: colorPurple,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ManageCategoriesScreen()),
+                  FadeSlideRoute(builder: (_) => const ManageCategoriesScreen()),
                 ),
               ),
               _buildSettingsTile(
@@ -66,7 +69,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: colorOrange,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const OrderGoalsScreen()),
+                  FadeSlideRoute(builder: (_) => const OrderGoalsScreen()),
                 ),
               ),
               _buildSettingsTile(
@@ -76,7 +79,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: colorOrange,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
+                  FadeSlideRoute(builder: (_) => const OrderHistoryScreen()),
                 ),
               ),
               const SizedBox(height: 16),
@@ -90,7 +93,17 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: Colors.blue,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const CommissionSettingsScreen()),
+                  FadeSlideRoute(builder: (_) => const CommissionSettingsScreen()),
+                ),
+              ),
+              _buildSettingsTile(
+                context,
+                title: 'Delivery Zones',
+                icon: Icons.delivery_dining_rounded,
+                color: Colors.teal,
+                onTap: () => Navigator.push(
+                  context,
+                  FadeSlideRoute(builder: (_) => const ManageDeliveryZonesScreen()),
                 ),
               ),
 
@@ -101,7 +114,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: Colors.teal,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ManageRiderSchedulesScreen()),
+                  FadeSlideRoute(builder: (_) => const ManageRiderSchedulesScreen()),
                 ),
               ),
 
@@ -112,7 +125,17 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: Colors.green,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ManageAdsScreen()),
+                  FadeSlideRoute(builder: (_) => const ManageAdsScreen()),
+                ),
+              ),
+              _buildSettingsTile(
+                context,
+                title: 'Manage Blog',
+                icon: Icons.article_rounded,
+                color: Colors.indigo,
+                onTap: () => Navigator.push(
+                  context,
+                  FadeSlideRoute(builder: (_) => const AdminBlogScreen()),
                 ),
               ),
               
@@ -123,7 +146,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: Colors.black87,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
+                  FadeSlideRoute(builder: (_) => const ManageUsersScreen()),
                 ),
               ),
               _buildSettingsTile(
@@ -133,7 +156,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 color: Colors.black87,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const EditAdminProfileScreen()),
+                  FadeSlideRoute(builder: (_) => const EditAdminProfileScreen()),
                 ),
               ),
               const SizedBox(height: 32),
@@ -146,7 +169,7 @@ class AdminSettingsScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Row(
@@ -192,7 +215,7 @@ class AdminSettingsScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04), // Ultra soft shadow
+                color: Colors.black.withValues(alpha:0.04), // Ultra soft shadow
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -203,7 +226,7 @@ class AdminSettingsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha:0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 24),

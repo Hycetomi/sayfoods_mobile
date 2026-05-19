@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:sayfoods_app/src/features/orders/domain/order_model.dart';
@@ -9,32 +11,68 @@ class OrderState {
   OrderState({required this.ongoing, required this.completed});
 }
 
-final orderProvider = FutureProvider.autoDispose<OrderState>((ref) async {
+// Terminal statuses — anything here moves to the Completed tab.
+const _completedStatuses = {'delivered', 'completed', 'cancelled'};
+
+Future<OrderState> _fetchOrders(SupabaseClient supabase, String userId) async {
+  final response = await supabase
+      .from('orders')
+      .select('*, order_items(*, products(*))')
+      .eq('client_id', userId)
+      .order('created_at', ascending: false);
+
+  final allOrders = (response as List<dynamic>)
+      .map((json) => OrderModel.fromJson(json as Map<String, dynamic>))
+      .toList();
+
+  return OrderState(
+    ongoing: allOrders
+        .where((o) => !_completedStatuses.contains(o.status))
+        .toList(),
+    completed: allOrders
+        .where((o) => _completedStatuses.contains(o.status))
+        .toList(),
+  );
+}
+
+// StreamProvider — re-fetches whenever an order row for this client changes.
+final orderProvider = StreamProvider.autoDispose<OrderState>((ref) {
   final supabase = Supabase.instance.client;
   final user = supabase.auth.currentUser;
 
   if (user == null) {
-    return OrderState(ongoing: [], completed: []);
+    return Stream.value(OrderState(ongoing: [], completed: []));
   }
 
-  // Fetch orders with their items and the related product details
-  final response = await supabase
-      .from('orders')
-      .select('*, order_items(*, products(*))')
-      .eq('client_id', user.id)
-      .order('created_at', ascending: false);
+  final controller = StreamController<OrderState>();
 
-  final List<OrderModel> allOrders = (response as List<dynamic>)
-      .map((json) => OrderModel.fromJson(json as Map<String, dynamic>))
-      .toList();
+  // Initial load
+  _fetchOrders(supabase, user.id)
+      .then(controller.add)
+      .catchError(controller.addError);
 
-  final ongoingOrders = allOrders
-      .where((order) => order.status != 'delivered' && order.status != 'cancelled')
-      .toList();
+  // Realtime — re-fetch on any change to this client's orders
+  final channel = supabase
+      .channel('client_orders_${user.id}')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'orders',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'client_id',
+          value: user.id,
+        ),
+        callback: (_) => _fetchOrders(supabase, user.id)
+            .then(controller.add)
+            .catchError(controller.addError),
+      )
+      .subscribe();
 
-  final completedOrders = allOrders
-      .where((order) => order.status == 'delivered' || order.status == 'cancelled')
-      .toList();
+  ref.onDispose(() {
+    channel.unsubscribe();
+    controller.close();
+  });
 
-  return OrderState(ongoing: ongoingOrders, completed: completedOrders);
+  return controller.stream;
 });

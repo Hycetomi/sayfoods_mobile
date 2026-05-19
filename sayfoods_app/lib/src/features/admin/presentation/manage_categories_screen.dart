@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sayfoods_app/src/features/products/application/category_provider.dart';
 import 'package:sayfoods_app/src/shared/widgets/text_input_dialog.dart';
 import 'package:sayfoods_app/src/shared/widgets/sayfoods_modal.dart';
+import 'package:sayfoods_app/src/shared/utils/error_handler.dart';
 
 class ManageCategoriesScreen extends ConsumerWidget {
   const ManageCategoriesScreen({super.key});
@@ -151,7 +152,7 @@ class ManageCategoriesScreen extends ConsumerWidget {
                         context: context,
                         type: SayfoodsModalType.error,
                         title: 'Error',
-                        subtitle: e.toString(),
+                        subtitle: ErrorHelper.getErrorMessage(e),
                       );
                     }
                     return false;
